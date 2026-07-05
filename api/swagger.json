@@ -1,0 +1,204 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SITANGKAL API",
+    "description": "Dokumentasi API Monitoring Pohon",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8050/sitangkal/api"
+    }
+  ],
+  "paths": {
+    "/auth/login.php": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Login User",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login Berhasil"
+          },
+          "400": {
+            "description": "Login Gagal"
+          }
+        }
+      }
+    },
+
+    "/auth/logout.php": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Logout User",
+        "responses": {
+          "200": {
+            "description": "Logout Berhasil"
+          }
+        }
+      }
+    },
+
+    "/monitoring/read.php": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Ambil Semua Monitoring atau Detail Monitoring",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data Monitoring"
+          }
+        }
+      }
+    },
+
+    "/monitoring/create.php": {
+      "post": {
+        "tags": ["Monitoring"],
+        "summary": "Tambah Monitoring",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "pohon_id"
+                ],
+                "properties": {
+                  "pohon_id": {
+                    "type": "integer"
+                  },
+                  "tanggal_monitoring": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "kesehatan_monitoring": {
+                    "type": "string"
+                  },
+                  "catatan": {
+                    "type": "string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Monitoring Berhasil Disimpan"
+          }
+        }
+      }
+    },
+
+    "/monitoring/update.php": {
+      "post": {
+        "tags": ["Monitoring"],
+        "summary": "Update Monitoring",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "pohon_id": {
+                    "type": "integer"
+                  },
+                  "tanggal_monitoring": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "kesehatan_monitoring": {
+                    "type": "string"
+                  },
+                  "catatan": {
+                    "type": "string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Monitoring Berhasil Diupdate"
+          }
+        }
+      }
+    },
+
+    "/monitoring/delete.php": {
+      "get": {
+        "tags": ["Monitoring"],
+        "summary": "Hapus Monitoring",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Monitoring Berhasil Dihapus"
+          }
+        }
+      }
+    }
+  }
+}

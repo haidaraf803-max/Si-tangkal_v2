@@ -1,0 +1,29 @@
+@media (max-width: 1100px) {
+    .left-stack { width: 230px; }
+    .layer-panel { width: 250px; }
+    .feature-cards-grid { grid-template-columns: 1fr 1fr; }
+    .detail-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 860px) {
+    .navbar { padding: 0 14px; }
+    .navbar-center { display: none; }
+    .logo-subtitle { display: none; }
+    .left-stack { display: none; }
+    .layer-panel { right: 76px; width: 220px; }
+    .info-strip { display: none; }
+    .stat-cards-row { grid-template-columns: 1fr 1fr; }
+    .feature-cards-grid { grid-template-columns: 1fr; }
+    .form-grid-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+    .fab span { display: none; }
+    .fab { width: 44px; height: 44px; }
+    .layer-panel { left: 16px; right: 16px; width: auto; top: calc(var(--navbar-height) + 70px); }
+    .stat-cards-row { grid-template-columns: 1fr; }
+    .sidebar { position: fixed; z-index: 1500; height: 100vh; }
+    /* fab jadi 44px di mobile -> tinggi stack = 5*44 + 4*10 = 260px,
+       jadi posisi popup ikut naik dibanding versi desktop (348px). */
+    .tree-popup-card { top: calc(var(--navbar-height) + 308px); left: 16px; right: 16px; width: auto; }
+}

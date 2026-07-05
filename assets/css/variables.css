@@ -1,0 +1,51 @@
+:root {
+    /* Primary green palette */
+    --color-primary: #1e8a4c;
+    --color-primary-dark: #146238;
+    --color-primary-light: #4caf72;
+    --color-primary-pale: #e8f6ee;
+
+    --color-rw: #1e8a4c;
+    --color-kahati: #1d7d8f;
+    --color-sehat: #1e8a4c;
+    --color-kurang-sehat: #d97706;
+    --color-green-space: #8fd19e;
+
+    --color-white: #ffffff;
+    --color-gray-50: #f8faf9;
+    --color-gray-100: #f1f4f2;
+    --color-gray-200: #e4e9e6;
+    --color-gray-300: #d1d8d4;
+    --color-gray-500: #8a9590;
+    --color-gray-700: #4d564f;
+    --color-gray-900: #1f2622;
+
+    --color-warning: #e0a317;
+    --color-danger: #d9534f;
+
+    /* Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.78);
+    --glass-bg-strong: rgba(255, 255, 255, 0.92);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-blur: blur(16px);
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px rgba(20, 40, 30, 0.06);
+    --shadow-md: 0 8px 24px rgba(20, 40, 30, 0.10);
+    --shadow-lg: 0 16px 40px rgba(20, 40, 30, 0.14);
+
+    /* Radii */
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --radius-full: 999px;
+
+    /* Transitions */
+    --transition-fast: 0.18s ease;
+    --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Font */
+    --font-main: 'Poppins', sans-serif;
+
+    --navbar-height: 78px;
+}

@@ -1,0 +1,57 @@
+/**
+ * map3d.css
+ * ---------
+ * Hanya berisi hal-hal yang spesifik untuk halaman Peta 3D (Cesium).
+ * Komponen UI lain (navbar, .fab, .layer-panel, .layer-group, .switch, dll)
+ * SENGAJA tidak diduplikasi di sini — semua sudah ada di panels.css /
+ * navbar.css / base.css dan dipakai ulang apa adanya supaya UI-nya selaras
+ * dengan peta 2D di index.php.
+ */
+
+/* Sama seperti pola #map di map.css: full-screen, mengambang di belakang
+   navbar (yang punya z-index 1000 & posisi fixed dengan margin 16px). */
+html, body, #cesiumContainer {
+    width: 100%;
+    height: 100%;
+}
+#cesiumContainer {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background: #0b1220;
+}
+
+/* Cesium default punya banyak widget kecil (search, home, scene-mode,
+   fullscreen, credit) yang warnanya tidak menyatu dengan tema situs.
+   Bagian ini cuma menyesuaikan radius & warna aksen (bukan menyembunyikan
+   fungsinya) supaya terasa satu keluarga dengan tombol .fab / .btn-primary
+   di halaman lain. */
+.cesium-viewer-toolbar,
+.cesium-viewer-animationContainer,
+.cesium-viewer-timelineContainer {
+    font-family: var(--font-main);
+}
+
+.cesium-button {
+    border-radius: var(--radius-sm) !important;
+}
+
+.cesium-widget-credits {
+    font-size: 10px !important;
+}
+
+/* Loading indicator ringan saat aset 3D (LOD/tileset) sedang diambil dari
+   Cesium ion, ditampilkan lewat JS (map3d.js) dengan menambahkan class
+   "loading" pada tombol layer terkait. */
+.fab.is-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Baris layer yang sedang memuat tileset pertama kalinya (belum pernah
+   dibuka) — dibuat sedikit redup + kursor wait supaya user tahu ada proses
+   berjalan, karena tileset dari Cesium ion bisa makan waktu beberapa detik. */
+.layer-row.indented.m3d-loading {
+    opacity: 0.55;
+    cursor: wait;
+}
