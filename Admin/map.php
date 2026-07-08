@@ -38,7 +38,7 @@ require_once 'layouts/sidebar.php';
         var top = frame.getBoundingClientRect().top;
         // sisakan sedikit jarak bawah biar tidak mepet footer
         var height = window.innerHeight - top - 24;
-        if (height < 500) height = 500;
+        if (height < 800) height = 800;
         frame.style.height = height + 'px';
     }
 

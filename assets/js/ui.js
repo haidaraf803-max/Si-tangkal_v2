@@ -212,19 +212,15 @@ function renderTreeDetail(tree) {
                 <p class="detail-description">${escapeHtml(tree.description || 'Belum ada keterangan tambahan untuk pohon ini.')}</p>
             </div>
 
-           
-        </div>
-    `;
-/*  <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--color-border, #e5e5e5);">
+            <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--color-border, #e5e5e5);">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
                     <b style="font-size:11.5px; color:var(--color-gray-500); text-transform:uppercase; letter-spacing:0.3px;">Riwayat Monitoring</b>
-                    ${window.SITANGKAL_LOGGED_IN
-                        ? `<button type="button" class="btn btn-primary" style="padding:6px 14px; font-size:12.5px;" onclick="openMonitoringModal(${tree.id}, '${escapeHtml(tree.name).replace(/'/g, "\\'")}', ${tree.lat ?? 'null'}, ${tree.lng ?? 'null'})">+ Monitoring</button>`
-                        : `<a href="login.php" class="btn btn-outline" style="padding:6px 14px; font-size:12.5px;">Login untuk Monitoring</a>`
-                    }
                 </div>
                 <div id="monitoring-history-list"></div>
-            </div>*/
+            </div>
+        </div>
+    `;
+
     if (typeof loadMonitoringHistory === 'function') {
         loadMonitoringHistory(tree.id, 'monitoring-history-list');
     }

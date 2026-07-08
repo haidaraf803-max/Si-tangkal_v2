@@ -91,7 +91,9 @@ function initMap() {
     // WMS tree layers (wmsPohon / wmsPohonRw / wmsPohonKahati) and districts are
     // off by default — they're extra GeoServer overlays the user can opt into.
 
-    loadAllLayers();
+   loadAllLayers().then(() => {
+        focusTreeFromUrl();
+    });
     bindLayerToggles();
 }
 
@@ -171,6 +173,8 @@ function renderTrees(trees) {
             }
         );
 
+        marker.treeData = tree; // simpan data pohon di marker, dipakai focusTreeFromUrl()
+
         marker.on("click", () => {
             showTreePopup(tree, marker);
         });
@@ -180,6 +184,31 @@ function renderTrees(trees) {
     });
 
 }
+
+// function renderTrees(trees) {
+
+//     layerGroups.dbPohon.clearLayers();
+
+//     trees.forEach((tree) => {
+
+//         if (!tree.lat || !tree.lng) return;
+
+//         const marker = L.marker(
+//             [tree.lat, tree.lng],
+//             {
+//                 icon: treeDivIcon(tree.kesehatan)
+//             }
+//         );
+
+//         marker.on("click", () => {
+//             showTreePopup(tree, marker);
+//         });
+
+//         layerGroups.dbPohon.addLayer(marker);
+
+//     });
+
+// }
 // function renderGreenSpaces(geojson) {
 //     const layer = L.geoJSON(geojson, {
 //         style: {
@@ -407,6 +436,31 @@ async function runTreeSearch(q) {
     } else if (valid.length > 1) {
         const bounds = L.latLngBounds(valid.map((t) => [t.lat, t.lng]));
         map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+    }
+}
+
+function focusTreeFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const treeId = params.get('tree_id');
+    if (!treeId) return;
+
+    const targetId = parseInt(treeId, 10);
+    let found = null;
+
+    layerGroups.dbPohon.eachLayer((marker) => {
+        if (marker.treeData && marker.treeData.id === targetId) {
+            found = marker;
+        }
+    });
+
+    if (found) {
+        if (!map.hasLayer(layerGroups.dbPohon)) {
+            layerGroups.dbPohon.addTo(map);
+            const cb = document.getElementById('layer-db-pohon');
+            if (cb) cb.checked = true;
+        }
+        map.setView(found.getLatLng(), 18);
+        found.fire('click');
     }
 }
 

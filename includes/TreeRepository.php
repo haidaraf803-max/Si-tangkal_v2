@@ -71,7 +71,7 @@ class TreeRepository
             }
 
             $foto = trim((string)($row['foto'] ?? ''));
-            $imageUrl = $foto !== '' ? ('assets/images/trees/' . $foto) : '';
+            $imageUrl = $foto !== '' ? ('assets/foto/' . $foto) : '';
 
             return [
                 'id' => (int)$row['id'],

@@ -32,17 +32,17 @@ try {
     // ==========================================
     // CEK LOGIN
     // ==========================================
-    if (!isset($_SESSION['user_id'])) {
+    // if (!isset($_SESSION['user_id'])) {
 
-        http_response_code(401);
+    //     http_response_code(401);
 
-        echo json_encode([
-            'success' => false,
-            'message' => 'Anda belum login'
-        ]);
+    //     echo json_encode([
+    //         'success' => false,
+    //         'message' => 'Anda belum login'
+    //     ]);
 
-        exit;
-    }
+    //     exit;
+    // }
 
     // ==========================================
     // DETAIL MONITORING BERDASARKAN ID

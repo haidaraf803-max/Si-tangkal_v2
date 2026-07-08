@@ -138,16 +138,17 @@ require_once 'layouts/sidebar.php';
                             </select>
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label" for="tahun_tanam">Tahun Tanam </label>
-                            <input type="text" id="tahun_tanam" name="tahun_tanam" class="form-control"
-                                value="<?= htmlspecialchars($data['tahun_tanam']) ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="habitus">Habitus </label>
-                            <input type="text" id="habitus" name="habitus" class="form-control"
-                                value="<?= htmlspecialchars($data['habitus']) ?>">
-                        </div>
+                       <div class="col-md-6">
+                        <label class="form-label" for="tahun_tanam">Tahun Tanam</label>
+                        <input type="text" id="tahun_tanam" name="tahun_tanam" class="form-control"
+                            value="<?= htmlspecialchars($data['tahun_tanam'] ?? '') ?>">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" for="habitus">Habitus</label>
+                        <input type="text" id="habitus" name="habitus" class="form-control"
+                            value="<?= htmlspecialchars($data['habitus'] ?? '') ?>">
+                    </div>
                         <div class="col-md-6">
                             <label class="form-label" for="status_kel">Status Kelompok </label>
                             <input type="text" id="status_kel" name="status_kel" class="form-control"

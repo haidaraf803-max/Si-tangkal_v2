@@ -70,14 +70,14 @@ $stats = TreeRepository::stats();
         <!-- Group: Pohon GeoServer (WMS, citra raster) -->
         <div class="layer-group" id="group-geoserver">
             <div class="layer-group-header" onclick="toggleLayerGroup('group-geoserver')">
-                <span>🛰️ Pohon GeoServer</span>
+                <span>GeoServer</span>
                 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div class="layer-group-body">
-                <div class="layer-row indented">
+                <!-- <div class="layer-row indented">
                     <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-primary-dark);"></span> Pohon</span>
                     <label class="switch"><input type="checkbox" id="layer-wms-pohon"><span class="switch-slider"></span></label>
-                </div>
+                </div> -->
                 <div class="layer-row indented">
                     <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-rw);"></span> Pohon RW</span>
                     <label class="switch"><input type="checkbox" id="layer-wms-pohon-rw"><span class="switch-slider"></span></label>
@@ -92,7 +92,7 @@ $stats = TreeRepository::stats();
         <!-- Group: Pohon Database (marker, bisa diklik) -->
         <div class="layer-group" id="group-database">
             <div class="layer-group-header" onclick="toggleLayerGroup('group-database')">
-                <span>🗄️ Pohon Database</span>
+                <span>Data Pohon</span>
                 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div class="layer-group-body">
@@ -148,10 +148,10 @@ $stats = TreeRepository::stats();
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
         <span>Filter</span>
     </button>
-    <button class="fab" id="fab-stats" onclick="openStatistics()" title="Statistik">
+    <!-- <button class="fab" id="fab-stats" onclick="openStatistics()" title="Statistik">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
         <span>Statistik</span>
-    </button>
+    </button> -->
     <button class="fab" id="fab-mylocation" onclick="locateMe()" title="Lokasi Saya">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
         <span>Lokasi</span>

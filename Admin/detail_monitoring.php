@@ -86,15 +86,18 @@ require_once 'layouts/sidebar.php';
 
         <!-- Data Pohon Terkait -->
         <div class="card mb-4">
-            <div class="card-header d-flex align-items-center gap-2">
-                <i class="bi bi-tree text-success"></i>
-                <strong>Data Pohon Terkait</strong>
-                <span class="ms-auto">
-                    <a href="detail_pohon.php?id=<?= (int) $data['pohon_id'] ?>" class="btn btn-sm btn-outline-success">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>Lihat Detail Pohon
-                    </a>
-                </span>
-            </div>
+           <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-tree text-success"></i>
+    <strong>Data Pohon Terkait</strong>
+    <span class="ms-auto d-flex gap-2">
+        <a href="../maps.php?tree_id=<?= (int) $data['pohon_id'] ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-geo-alt me-1"></i>Lihat di Peta
+        </a>
+        <a href="detail_pohon.php?id=<?= (int) $data['pohon_id'] ?>" class="btn btn-sm btn-outline-success">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Lihat Detail Pohon
+        </a>
+    </span>
+</div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-4">

@@ -105,7 +105,7 @@ try {
 
             'status_kel' => $row['status_kel'] ?? '',
 
-            'image_url' => !empty($row['foto']) ? ('assets/images/trees/' . $row['foto']) : '',
+            'image_url' => !empty($row['foto']) ? ('assets/foto/' . $row['foto']) : '',
 
             'tahun_tanam' => $row['tahun_tanam'] ?? '',
 
