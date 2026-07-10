@@ -77,6 +77,15 @@ try {
             tanggal_monitoring = ?,
             kesehatan_monitoring = ?,
             catatan = ?,
+            tinggi_pohon = ?,
+            diameter_batang = ?,
+            lebar_tajuk = ?,
+            jenis_gangguan = ?,
+            tingkat_keparahan = ?,
+            rekomendasi_tindakan = ?,
+            status_tindak_lanjut = ?,
+            latitude = ?,
+            longitude = ?,
             user_id = ?
         WHERE id = ?
     ");
@@ -86,6 +95,15 @@ try {
         $_POST['tanggal_monitoring'] ?? date('Y-m-d'),
         $_POST['kesehatan_monitoring'] ?? null,
         $_POST['catatan'] ?? null,
+        ($_POST['tinggi_pohon'] ?? '') !== '' ? (float) $_POST['tinggi_pohon'] : null,
+        ($_POST['diameter_batang'] ?? '') !== '' ? (float) $_POST['diameter_batang'] : null,
+        ($_POST['lebar_tajuk'] ?? '') !== '' ? (float) $_POST['lebar_tajuk'] : null,
+        $_POST['jenis_gangguan'] ?? null,
+        $_POST['tingkat_keparahan'] ?? null,
+        $_POST['rekomendasi_tindakan'] ?? null,
+        $_POST['status_tindak_lanjut'] ?? 'Belum',
+        ($_POST['latitude'] ?? '') !== '' ? (float) $_POST['latitude'] : null,
+        ($_POST['longitude'] ?? '') !== '' ? (float) $_POST['longitude'] : null,
         $user_id,
         $id
     ]);

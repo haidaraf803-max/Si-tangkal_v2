@@ -21,7 +21,7 @@ class MonitoringModel
     /**
      * Ambil semua data monitoring beserta info pohon terkait & jumlah media.
      */
-    public function getAll(string $keyword = ''): array
+    public function getAll(string $keyword = '', string $statusFilter = ''): array
     {
         $sql = "SELECT m.*,
                        p.nama_lokal, p.nama_latin, p.nama_jalan, p.kelurahan, p.kecamatan,
@@ -31,10 +31,25 @@ class MonitoringModel
                 LEFT JOIN pohon p ON p.id = m.pohon_id
                 LEFT JOIN t_users u ON u.UserId = m.user_id";
 
+        $conditions = [];
         $params = [];
+
         if ($keyword !== '') {
-            $sql .= " WHERE p.nama_lokal LIKE :kw OR p.nama_jalan LIKE :kw OR m.kesehatan_monitoring LIKE :kw OR m.catatan LIKE :kw";
-            $params[':kw'] = "%{$keyword}%";
+            $conditions[] = "(p.nama_lokal LIKE :kw1 OR p.nama_jalan LIKE :kw2 OR m.kesehatan_monitoring LIKE :kw3 OR m.catatan LIKE :kw4)";
+            $likeKeyword = "%{$keyword}%";
+            $params[':kw1'] = $likeKeyword;
+            $params[':kw2'] = $likeKeyword;
+            $params[':kw3'] = $likeKeyword;
+            $params[':kw4'] = $likeKeyword;
+        }
+
+        if ($statusFilter !== '') {
+            $conditions[] = "m.status_tindak_lanjut = :status";
+            $params[':status'] = $statusFilter;
+        }
+
+        if (!empty($conditions)) {
+            $sql .= " WHERE " . implode(' AND ', $conditions);
         }
 
         $sql .= " ORDER BY m.tanggal_monitoring DESC, m.id DESC";
@@ -105,14 +120,23 @@ class MonitoringModel
         string $tanggal_monitoring,
         string $kesehatan_monitoring,
         string $catatan,
-        array $files = []
+        array $files = [],
+        array $detail = []
     ): array {
         try {
             $this->conn->beginTransaction();
 
             $stmt = $this->conn->prepare(
-                "INSERT INTO monitoring (pohon_id, user_id, tanggal_monitoring, kesehatan_monitoring, catatan)
-                 VALUES (:pohon_id, :user_id, :tanggal_monitoring, :kesehatan_monitoring, :catatan)"
+                "INSERT INTO monitoring
+                    (pohon_id, user_id, tanggal_monitoring, kesehatan_monitoring, catatan,
+                     tinggi_pohon, diameter_batang, lebar_tajuk, jenis_gangguan,
+                     tingkat_keparahan, rekomendasi_tindakan, status_tindak_lanjut,
+                     latitude, longitude)
+                 VALUES
+                    (:pohon_id, :user_id, :tanggal_monitoring, :kesehatan_monitoring, :catatan,
+                     :tinggi_pohon, :diameter_batang, :lebar_tajuk, :jenis_gangguan,
+                     :tingkat_keparahan, :rekomendasi_tindakan, :status_tindak_lanjut,
+                     :latitude, :longitude)"
             );
             $stmt->execute([
                 ':pohon_id'             => $pohon_id,
@@ -120,6 +144,15 @@ class MonitoringModel
                 ':tanggal_monitoring'   => $tanggal_monitoring ?: date('Y-m-d'),
                 ':kesehatan_monitoring' => $kesehatan_monitoring ?: null,
                 ':catatan'              => $catatan ?: null,
+                ':tinggi_pohon'         => ($detail['tinggi_pohon'] ?? '') !== '' ? (float) $detail['tinggi_pohon'] : null,
+                ':diameter_batang'      => ($detail['diameter_batang'] ?? '') !== '' ? (float) $detail['diameter_batang'] : null,
+                ':lebar_tajuk'          => ($detail['lebar_tajuk'] ?? '') !== '' ? (float) $detail['lebar_tajuk'] : null,
+                ':jenis_gangguan'       => $detail['jenis_gangguan'] ?? null,
+                ':tingkat_keparahan'    => $detail['tingkat_keparahan'] ?? null,
+                ':rekomendasi_tindakan' => $detail['rekomendasi_tindakan'] ?? null,
+                ':status_tindak_lanjut' => $detail['status_tindak_lanjut'] ?? 'Belum',
+                ':latitude'             => ($detail['latitude'] ?? '') !== '' ? (float) $detail['latitude'] : null,
+                ':longitude'            => ($detail['longitude'] ?? '') !== '' ? (float) $detail['longitude'] : null,
             ]);
 
             $monitoringId = (int) $this->conn->lastInsertId();
@@ -149,7 +182,8 @@ class MonitoringModel
         string $kesehatan_monitoring,
         string $catatan,
         array $files = [],
-        array $deleteMediaIds = []
+        array $deleteMediaIds = [],
+        array $detail = []
     ): array {
         try {
             $this->conn->beginTransaction();
@@ -159,7 +193,16 @@ class MonitoringModel
                  SET pohon_id = :pohon_id,
                      tanggal_monitoring = :tanggal_monitoring,
                      kesehatan_monitoring = :kesehatan_monitoring,
-                     catatan = :catatan
+                     catatan = :catatan,
+                     tinggi_pohon = :tinggi_pohon,
+                     diameter_batang = :diameter_batang,
+                     lebar_tajuk = :lebar_tajuk,
+                     jenis_gangguan = :jenis_gangguan,
+                     tingkat_keparahan = :tingkat_keparahan,
+                     rekomendasi_tindakan = :rekomendasi_tindakan,
+                     status_tindak_lanjut = :status_tindak_lanjut,
+                     latitude = :latitude,
+                     longitude = :longitude
                  WHERE id = :id"
             );
             $stmt->execute([
@@ -167,6 +210,15 @@ class MonitoringModel
                 ':tanggal_monitoring'   => $tanggal_monitoring ?: date('Y-m-d'),
                 ':kesehatan_monitoring' => $kesehatan_monitoring ?: null,
                 ':catatan'              => $catatan ?: null,
+                ':tinggi_pohon'         => ($detail['tinggi_pohon'] ?? '') !== '' ? (float) $detail['tinggi_pohon'] : null,
+                ':diameter_batang'      => ($detail['diameter_batang'] ?? '') !== '' ? (float) $detail['diameter_batang'] : null,
+                ':lebar_tajuk'          => ($detail['lebar_tajuk'] ?? '') !== '' ? (float) $detail['lebar_tajuk'] : null,
+                ':jenis_gangguan'       => $detail['jenis_gangguan'] ?? null,
+                ':tingkat_keparahan'    => $detail['tingkat_keparahan'] ?? null,
+                ':rekomendasi_tindakan' => $detail['rekomendasi_tindakan'] ?? null,
+                ':status_tindak_lanjut' => $detail['status_tindak_lanjut'] ?? 'Belum',
+                ':latitude'             => ($detail['latitude'] ?? '') !== '' ? (float) $detail['latitude'] : null,
+                ':longitude'            => ($detail['longitude'] ?? '') !== '' ? (float) $detail['longitude'] : null,
                 ':id'                   => $id,
             ]);
 

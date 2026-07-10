@@ -7,13 +7,15 @@
   },
   "servers": [
     {
-      "url": "http://localhost:8050/sitangkal/api"
+      "url": "http://localhost:8050/sitangkal-final/api"
     }
   ],
   "paths": {
     "/auth/login.php": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Login User",
         "requestBody": {
           "required": true,
@@ -47,10 +49,11 @@
         }
       }
     },
-
     "/auth/logout.php": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Logout User",
         "responses": {
           "200": {
@@ -59,16 +62,28 @@
         }
       }
     },
-
     "/monitoring/read.php": {
       "get": {
-        "tags": ["Monitoring"],
-        "summary": "Ambil Semua Monitoring atau Detail Monitoring",
+        "tags": [
+          "Monitoring"
+        ],
+        "summary": "Ambil Semua Monitoring, Riwayat Monitoring per Pohon, atau Detail Monitoring",
+        "description": "Mengembalikan data monitoring beserta detail pohon terkait (termasuk koordinat lat/lng) pada setiap item, di dalam field `pohon`. Jika parameter `id` diisi, mengembalikan 1 data monitoring detail. Jika parameter `pohon_id` diisi, mengembalikan seluruh riwayat monitoring untuk pohon tersebut. Jika tidak ada parameter, mengembalikan seluruh data monitoring.",
         "parameters": [
           {
             "name": "id",
             "in": "query",
             "required": false,
+            "description": "ID monitoring untuk mengambil 1 data detail",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pohon_id",
+            "in": "query",
+            "required": false,
+            "description": "ID pohon untuk mengambil riwayat monitoring pohon tersebut",
             "schema": {
               "type": "integer"
             }
@@ -76,15 +91,138 @@
         ],
         "responses": {
           "200": {
-            "description": "Data Monitoring"
+            "description": "Data Monitoring",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "Muncul saat tanpa parameter `id` (list semua / riwayat per pohon)",
+                      "example": 4
+                    },
+                    "data": {
+                      "description": "Object jika parameter `id` diisi, array jika tidak",
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/MonitoringWithPohon"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/MonitoringWithPohon"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "list_semua_monitoring": {
+                    "summary": "Tanpa parameter (semua data monitoring)",
+                    "value": {
+                      "success": true,
+                      "total": 4,
+                      "data": [
+                        {
+                          "id": 7,
+                          "pohon_id": 8,
+                          "user_id": 5,
+                          "tanggal_monitoring": "2026-07-08 00:00:00",
+                          "kesehatan_monitoring": null,
+                          "catatan": "contoh",
+                          "created_at": "2026-07-08 12:03:01",
+                          "updated_at": "2026-07-08 12:03:01",
+                          "pohon": {
+                            "no_pohon": 8,
+                            "nama_lokal": "Mangga",
+                            "nama_latin": "Mangifera indica",
+                            "family": "Anacardiaceae",
+                            "lat": -6.8872706,
+                            "lng": 107.5226141,
+                            "nama_jalan": "Jl. Cibeber",
+                            "kelurahan": "Cibeber",
+                            "kecamatan": "Cimahi Selatan",
+                            "kesehatan": "Sehat",
+                            "status_kel": "Data Deficient/Kekurangan Data",
+                            "image_url": "assets/foto/jlncibeber_20220928_103552.jpg"
+                          },
+                          "media_count": 1,
+                          "media": [
+                            {
+                              "id": 7,
+                              "monitoring_id": 7,
+                              "media_type": "foto"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "detail_by_id": {
+                    "summary": "Dengan parameter ?id= (1 data monitoring)",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": 4,
+                        "pohon_id": 3489,
+                        "user_id": 5,
+                        "tanggal_monitoring": "2026-07-08 00:00:00",
+                        "kesehatan_monitoring": "Sehat",
+                        "catatan": "Contoh",
+                        "created_at": "2026-07-08 11:37:20",
+                        "updated_at": "2026-07-08 11:37:20",
+                        "pohon": {
+                          "no_pohon": 3489,
+                          "nama_lokal": "Mahoni",
+                          "nama_latin": "Swietenia macrophylla",
+                          "family": "Meliaceae",
+                          "lat": -6.9147,
+                          "lng": 107.6098,
+                          "nama_jalan": "Jl. Ir. H. Djuanda",
+                          "kelurahan": "Dago",
+                          "kecamatan": "Coblong",
+                          "kesehatan": "Sehat",
+                          "status_kel": "Dilindungi",
+                          "image_url": "assets/foto/mahoni_015.jpg"
+                        },
+                        "media_count": 1,
+                        "media": [
+                          {
+                            "id": 4,
+                            "monitoring_id": 4,
+                            "media_type": "foto",
+                            "file_name": "Gemini_Generated_Image_bqd4atbqd4atbqd4.png",
+                            "file_path": "media/monitoring/2026-07-08/foto/20260708_043720_1.png",
+                            "created_at": "2026-07-08 11:37:20"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login"
+          },
+          "404": {
+            "description": "Data monitoring tidak ditemukan"
           }
         }
       }
     },
-
     "/monitoring/create.php": {
       "post": {
-        "tags": ["Monitoring"],
+        "tags": [
+          "Monitoring"
+        ],
         "summary": "Tambah Monitoring",
         "requestBody": {
           "required": true,
@@ -109,6 +247,61 @@
                   "catatan": {
                     "type": "string"
                   },
+                  "tinggi_pohon": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "meter"
+                  },
+                  "diameter_batang": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "cm (DBH)"
+                  },
+                  "lebar_tajuk": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "meter"
+                  },
+                  "jenis_gangguan": {
+                    "type": "string",
+                    "description": "Hama/Penyakit/Kerusakan Fisik/dll"
+                  },
+                  "tingkat_keparahan": {
+                    "type": "string",
+                    "enum": [
+                      "Ringan",
+                      "Sedang",
+                      "Berat"
+                    ]
+                  },
+                  "rekomendasi_tindakan": {
+                    "type": "string",
+                    "description": "Perlu Pemangkasan/Ditebang/dll"
+                  },
+                  "status_tindak_lanjut": {
+                    "type": "string",
+                    "enum": [
+                      "Belum",
+                      "Diproses",
+                      "Selesai"
+                    ],
+                    "default": "Belum"
+                  },
+                  "lat": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "koordinat GPS device saat survei (opsional, dipakai utk validasi jarak & disimpan ke kolom latitude)"
+                  },
+                  "lng": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "koordinat GPS device saat survei (opsional, disimpan ke kolom longitude)"
+                  },
+                  "accuracy": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "akurasi GPS dalam meter (opsional)"
+                  },
                   "files": {
                     "type": "array",
                     "items": {
@@ -128,10 +321,11 @@
         }
       }
     },
-
     "/monitoring/update.php": {
       "post": {
-        "tags": ["Monitoring"],
+        "tags": [
+          "Monitoring"
+        ],
         "summary": "Update Monitoring",
         "requestBody": {
           "required": true,
@@ -159,6 +353,61 @@
                   "catatan": {
                     "type": "string"
                   },
+                  "tinggi_pohon": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "meter"
+                  },
+                  "diameter_batang": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "cm (DBH)"
+                  },
+                  "lebar_tajuk": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "meter"
+                  },
+                  "jenis_gangguan": {
+                    "type": "string",
+                    "description": "Hama/Penyakit/Kerusakan Fisik/dll"
+                  },
+                  "tingkat_keparahan": {
+                    "type": "string",
+                    "enum": [
+                      "Ringan",
+                      "Sedang",
+                      "Berat"
+                    ]
+                  },
+                  "rekomendasi_tindakan": {
+                    "type": "string",
+                    "description": "Perlu Pemangkasan/Ditebang/dll"
+                  },
+                  "status_tindak_lanjut": {
+                    "type": "string",
+                    "enum": [
+                      "Belum",
+                      "Diproses",
+                      "Selesai"
+                    ],
+                    "default": "Belum"
+                  },
+                  "lat": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "koordinat GPS device saat survei (opsional, dipakai utk validasi jarak & disimpan ke kolom latitude)"
+                  },
+                  "lng": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "koordinat GPS device saat survei (opsional, disimpan ke kolom longitude)"
+                  },
+                  "accuracy": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "akurasi GPS dalam meter (opsional)"
+                  },
                   "files": {
                     "type": "array",
                     "items": {
@@ -178,10 +427,11 @@
         }
       }
     },
-
     "/monitoring/delete.php": {
       "get": {
-        "tags": ["Monitoring"],
+        "tags": [
+          "Monitoring"
+        ],
         "summary": "Hapus Monitoring",
         "parameters": [
           {
@@ -196,6 +446,848 @@
         "responses": {
           "200": {
             "description": "Monitoring Berhasil Dihapus"
+          }
+        }
+      }
+    },
+    "/trees.php": {
+      "get": {
+        "tags": [
+          "Pohon"
+        ],
+        "summary": "Ambil Daftar Pohon (untuk peta/koordinat)",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Pencarian bebas pada nama_lokal, family, atau kesehatan",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kesehatan[]",
+            "in": "query",
+            "required": false,
+            "description": "Filter status kesehatan pohon (bisa lebih dari satu)",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "example": "Sehat"
+              }
+            }
+          },
+          {
+            "name": "status_kel[]",
+            "in": "query",
+            "required": false,
+            "description": "Filter status konservasi (bisa lebih dari satu)",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar Pohon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Pohon"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pohon/read.php": {
+      "get": {
+        "tags": [
+          "Pohon"
+        ],
+        "summary": "Ambil Semua Pohon, Detail Pohon, atau Cari/Filter Pohon",
+        "description": "Jika parameter `id` diisi, mengembalikan 1 data pohon detail. Jika tidak, mengembalikan daftar pohon (bisa disaring lewat `q`, `kesehatan[]`, dan `status_kel[]`).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "ID pohon untuk mengambil 1 data detail",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Pencarian bebas pada nama_lokal, nama_latin, family, nama_jalan, atau kesehatan",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kesehatan[]",
+            "in": "query",
+            "required": false,
+            "description": "Filter status kesehatan pohon (bisa lebih dari satu)",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "example": "Sehat"
+              }
+            }
+          },
+          {
+            "name": "status_kel[]",
+            "in": "query",
+            "required": false,
+            "description": "Filter status konservasi (bisa lebih dari satu)",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data Pohon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "total": {
+                      "type": "integer",
+                      "description": "Muncul saat tanpa parameter `id` (list/pencarian)",
+                      "example": 2
+                    },
+                    "data": {
+                      "description": "Object jika parameter `id` diisi, array jika tidak",
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/PohonRaw"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PohonRaw"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "list_semua_pohon": {
+                    "summary": "Tanpa parameter (semua data pohon)",
+                    "value": {
+                      "success": true,
+                      "total": 1,
+                      "data": [
+                        {
+                          "id": 3489,
+                          "no_pohon": 2,
+                          "nama_lokal": "Sukun",
+                          "nama_latin": "Artocarpus altilis",
+                          "family": "Moraceae",
+                          "tahun_tanam": null,
+                          "habitus": null,
+                          "status_kel": "Least Cocern/Resiko Rendah",
+                          "volume": 0.432,
+                          "kelas_awet": "V (Lima)",
+                          "kelas_kuat": "IV (Empat)",
+                          "berat_jenis": 330.0,
+                          "kesehatan": "Sehat",
+                          "serapan_co": 1145.410324,
+                          "produksi_o": 836.1495362,
+                          "nama_jalan": "Jl. Cibeber",
+                          "kelurahan": "Cibeber",
+                          "kecamatan": "Cimahi Selatan",
+                          "koordinat_x": 107.523,
+                          "koordinat_y": -6.88674,
+                          "keterangan": null,
+                          "foto": "jlncibeber_20220928_103109.jpg",
+                          "flag": "0",
+                          "image_url": "assets/foto/jlncibeber_20220928_103109.jpg"
+                        }
+                      ]
+                    }
+                  },
+                  "detail_by_id": {
+                    "summary": "Dengan parameter ?id= (1 data pohon)",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": 3489,
+                        "no_pohon": 2,
+                        "nama_lokal": "Sukun",
+                        "nama_latin": "Artocarpus altilis",
+                        "family": "Moraceae",
+                        "kesehatan": "Sehat",
+                        "status_kel": "Least Cocern/Resiko Rendah",
+                        "koordinat_x": 107.523,
+                        "koordinat_y": -6.88674,
+                        "foto": "jlncibeber_20220928_103109.jpg",
+                        "image_url": "assets/foto/jlncibeber_20220928_103109.jpg"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data pohon tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/pohon/create.php": {
+      "post": {
+        "tags": [
+          "Pohon"
+        ],
+        "summary": "Tambah Data Pohon",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "nama_lokal"
+                ],
+                "properties": {
+                  "no_pohon": {
+                    "type": "integer"
+                  },
+                  "nama_lokal": {
+                    "type": "string"
+                  },
+                  "nama_latin": {
+                    "type": "string"
+                  },
+                  "family": {
+                    "type": "string"
+                  },
+                  "tahun_tanam": {
+                    "type": "string",
+                    "example": "2020"
+                  },
+                  "habitus": {
+                    "type": "string"
+                  },
+                  "status_kel": {
+                    "type": "string",
+                    "description": "Status konservasi, mis. Least Concern/Resiko Rendah"
+                  },
+                  "volume": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "kelas_awet": {
+                    "type": "string"
+                  },
+                  "kelas_kuat": {
+                    "type": "string"
+                  },
+                  "berat_jenis": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "kesehatan": {
+                    "type": "string",
+                    "enum": [
+                      "Sehat",
+                      "Kurang Sehat",
+                      "Sakit"
+                    ],
+                    "default": "Sehat"
+                  },
+                  "serapan_co": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "produksi_o": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "nama_jalan": {
+                    "type": "string"
+                  },
+                  "kelurahan": {
+                    "type": "string"
+                  },
+                  "kecamatan": {
+                    "type": "string"
+                  },
+                  "koordinat_x": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "longitude"
+                  },
+                  "koordinat_y": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "latitude"
+                  },
+                  "keterangan": {
+                    "type": "string"
+                  },
+                  "flag": {
+                    "type": "string",
+                    "enum": [
+                      "0",
+                      "1"
+                    ],
+                    "default": "0"
+                  },
+                  "foto": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Foto pohon (jpg/jpeg/png/webp)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Data Pohon Berhasil Ditambahkan"
+          },
+          "401": {
+            "description": "Belum login"
+          },
+          "500": {
+            "description": "Nama lokal pohon wajib diisi / kesalahan server"
+          }
+        }
+      }
+    },
+    "/pohon/update.php": {
+      "post": {
+        "tags": [
+          "Pohon"
+        ],
+        "summary": "Update Data Pohon",
+        "description": "Foto hanya diganti jika field `foto` diisi file baru; jika kosong, foto lama tetap dipertahankan.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "nama_lokal"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "no_pohon": {
+                    "type": "integer"
+                  },
+                  "nama_lokal": {
+                    "type": "string"
+                  },
+                  "nama_latin": {
+                    "type": "string"
+                  },
+                  "family": {
+                    "type": "string"
+                  },
+                  "tahun_tanam": {
+                    "type": "string",
+                    "example": "2020"
+                  },
+                  "habitus": {
+                    "type": "string"
+                  },
+                  "status_kel": {
+                    "type": "string",
+                    "description": "Status konservasi, mis. Least Concern/Resiko Rendah"
+                  },
+                  "volume": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "kelas_awet": {
+                    "type": "string"
+                  },
+                  "kelas_kuat": {
+                    "type": "string"
+                  },
+                  "berat_jenis": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "kesehatan": {
+                    "type": "string",
+                    "enum": [
+                      "Sehat",
+                      "Kurang Sehat",
+                      "Sakit"
+                    ],
+                    "default": "Sehat"
+                  },
+                  "serapan_co": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "produksi_o": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "nama_jalan": {
+                    "type": "string"
+                  },
+                  "kelurahan": {
+                    "type": "string"
+                  },
+                  "kecamatan": {
+                    "type": "string"
+                  },
+                  "koordinat_x": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "longitude"
+                  },
+                  "koordinat_y": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "latitude"
+                  },
+                  "keterangan": {
+                    "type": "string"
+                  },
+                  "flag": {
+                    "type": "string",
+                    "enum": [
+                      "0",
+                      "1"
+                    ],
+                    "default": "0"
+                  },
+                  "foto": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Foto pohon (jpg/jpeg/png/webp)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Data Pohon Berhasil Diupdate"
+          },
+          "401": {
+            "description": "Belum login"
+          },
+          "500": {
+            "description": "Data pohon tidak ditemukan / kesalahan server"
+          }
+        }
+      }
+    },
+    "/pohon/delete.php": {
+      "get": {
+        "tags": [
+          "Pohon"
+        ],
+        "summary": "Hapus Data Pohon",
+        "description": "Menghapus data pohon beserta file foto fisiknya (jika ada).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data Pohon Berhasil Dihapus"
+          },
+          "401": {
+            "description": "Belum login"
+          },
+          "500": {
+            "description": "Data pohon tidak ditemukan / kesalahan server"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Pohon": {
+        "type": "object",
+        "description": "Detail pohon beserta koordinat lokasinya",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "no_pohon": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "description": "nama_lokal",
+            "example": "Mahoni"
+          },
+          "scientific_name": {
+            "type": "string",
+            "description": "nama_latin"
+          },
+          "family": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number",
+            "format": "float",
+            "description": "koordinat_y",
+            "nullable": true
+          },
+          "lng": {
+            "type": "number",
+            "format": "float",
+            "description": "koordinat_x",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "description": "nama_jalan"
+          },
+          "village": {
+            "type": "string",
+            "description": "kelurahan"
+          },
+          "district": {
+            "type": "string",
+            "description": "kecamatan"
+          },
+          "kesehatan": {
+            "type": "string",
+            "example": "Sehat"
+          },
+          "status_kel": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "tahun_tanam": {
+            "type": "string"
+          },
+          "habitus": {
+            "type": "string"
+          },
+          "volume": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "description": "keterangan"
+          },
+          "flag": {
+            "type": "string"
+          }
+        }
+      },
+      "PohonRingkas": {
+        "type": "object",
+        "description": "Detail pohon terkait yang disertakan pada tiap data monitoring",
+        "properties": {
+          "no_pohon": {
+            "type": "integer",
+            "nullable": true
+          },
+          "nama_lokal": {
+            "type": "string",
+            "nullable": true
+          },
+          "nama_latin": {
+            "type": "string",
+            "nullable": true
+          },
+          "family": {
+            "type": "string",
+            "nullable": true
+          },
+          "lat": {
+            "type": "number",
+            "format": "float",
+            "description": "koordinat_y",
+            "nullable": true
+          },
+          "lng": {
+            "type": "number",
+            "format": "float",
+            "description": "koordinat_x",
+            "nullable": true
+          },
+          "nama_jalan": {
+            "type": "string",
+            "nullable": true
+          },
+          "kelurahan": {
+            "type": "string",
+            "nullable": true
+          },
+          "kecamatan": {
+            "type": "string",
+            "nullable": true
+          },
+          "kesehatan": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_kel": {
+            "type": "string",
+            "nullable": true
+          },
+          "image_url": {
+            "type": "string"
+          }
+        }
+      },
+      "MonitoringWithPohon": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "pohon_id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "tanggal_monitoring": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kesehatan_monitoring": {
+            "type": "string",
+            "nullable": true
+          },
+          "catatan": {
+            "type": "string",
+            "nullable": true
+          },
+          "tinggi_pohon": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "description": "meter"
+          },
+          "diameter_batang": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "description": "cm (DBH)"
+          },
+          "lebar_tajuk": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "description": "meter"
+          },
+          "jenis_gangguan": {
+            "type": "string",
+            "nullable": true
+          },
+          "tingkat_keparahan": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "Ringan",
+              "Sedang",
+              "Berat",
+              null
+            ]
+          },
+          "rekomendasi_tindakan": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_tindak_lanjut": {
+            "type": "string",
+            "enum": [
+              "Belum",
+              "Diproses",
+              "Selesai"
+            ]
+          },
+          "latitude": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "description": "koordinat GPS saat survei"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pohon": {
+            "$ref": "#/components/schemas/PohonRingkas"
+          },
+          "media_count": {
+            "type": "integer"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "PohonRaw": {
+        "type": "object",
+        "description": "Data pohon lengkap sesuai kolom tabel `pohon` (dipakai oleh api/pohon/*.php)",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 3489
+          },
+          "no_pohon": {
+            "type": "integer",
+            "nullable": true
+          },
+          "nama_lokal": {
+            "type": "string",
+            "nullable": true,
+            "example": "Sukun"
+          },
+          "nama_latin": {
+            "type": "string",
+            "nullable": true
+          },
+          "family": {
+            "type": "string",
+            "nullable": true
+          },
+          "tahun_tanam": {
+            "type": "string",
+            "nullable": true
+          },
+          "habitus": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_kel": {
+            "type": "string",
+            "nullable": true
+          },
+          "volume": {
+            "type": "number",
+            "format": "float"
+          },
+          "kelas_awet": {
+            "type": "string",
+            "nullable": true
+          },
+          "kelas_kuat": {
+            "type": "string",
+            "nullable": true
+          },
+          "berat_jenis": {
+            "type": "number",
+            "format": "float"
+          },
+          "kesehatan": {
+            "type": "string",
+            "enum": [
+              "Sehat",
+              "Kurang Sehat",
+              "Sakit"
+            ]
+          },
+          "serapan_co": {
+            "type": "number",
+            "format": "float"
+          },
+          "produksi_o": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "nama_jalan": {
+            "type": "string",
+            "nullable": true
+          },
+          "kelurahan": {
+            "type": "string",
+            "nullable": true
+          },
+          "kecamatan": {
+            "type": "string",
+            "nullable": true
+          },
+          "koordinat_x": {
+            "type": "number",
+            "format": "float",
+            "description": "longitude"
+          },
+          "koordinat_y": {
+            "type": "number",
+            "format": "float",
+            "nullable": true,
+            "description": "latitude"
+          },
+          "keterangan": {
+            "type": "string",
+            "nullable": true
+          },
+          "foto": {
+            "type": "string",
+            "nullable": true
+          },
+          "flag": {
+            "type": "string",
+            "enum": [
+              "0",
+              "1"
+            ]
+          },
+          "image_url": {
+            "type": "string",
+            "description": "Turunan dari `foto`, path relatif ke assets/foto/"
           }
         }
       }

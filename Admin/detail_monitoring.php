@@ -124,6 +124,84 @@ require_once 'layouts/sidebar.php';
             </div>
         </div>
 
+        <!-- Detail Teknis & Tindak Lanjut -->
+        <?php
+            $adaDetailTeknis = $data['tinggi_pohon'] || $data['diameter_batang'] || $data['lebar_tajuk']
+                || $data['jenis_gangguan'] || $data['tingkat_keparahan'] || $data['rekomendasi_tindakan']
+                || $data['latitude'] || $data['longitude'];
+
+            $keparahanBadge = match ($data['tingkat_keparahan'] ?? null) {
+                'Ringan' => 'bg-success-subtle text-success',
+                'Sedang' => 'bg-warning-subtle text-warning',
+                'Berat'  => 'bg-danger-subtle text-danger',
+                default  => 'bg-secondary-subtle text-secondary',
+            };
+            $tindakLanjutBadge = match ($data['status_tindak_lanjut'] ?? 'Belum') {
+                'Selesai'  => 'bg-success-subtle text-success',
+                'Diproses' => 'bg-warning-subtle text-warning',
+                default    => 'bg-secondary-subtle text-secondary',
+            };
+        ?>
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-rulers text-primary"></i>
+                <strong>Detail Teknis & Tindak Lanjut</strong>
+                <span class="ms-auto">
+                    <span class="badge rounded-pill <?= $tindakLanjutBadge ?>">
+                        <?= htmlspecialchars($data['status_tindak_lanjut'] ?? 'Belum') ?>
+                    </span>
+                </span>
+            </div>
+            <div class="card-body">
+                <?php if ($adaDetailTeknis): ?>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Tinggi Pohon</div>
+                        <div class="fw-500"><?= $data['tinggi_pohon'] !== null ? htmlspecialchars($data['tinggi_pohon']) . ' m' : '—' ?></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Diameter Batang (DBH)</div>
+                        <div class="fw-500"><?= $data['diameter_batang'] !== null ? htmlspecialchars($data['diameter_batang']) . ' cm' : '—' ?></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Lebar Tajuk</div>
+                        <div class="fw-500"><?= $data['lebar_tajuk'] !== null ? htmlspecialchars($data['lebar_tajuk']) . ' m' : '—' ?></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Jenis Gangguan</div>
+                        <div class="fw-500"><?= htmlspecialchars($data['jenis_gangguan'] ?: '—') ?></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Tingkat Keparahan</div>
+                        <div>
+                            <?php if ($data['tingkat_keparahan']): ?>
+                            <span class="badge rounded-pill <?= $keparahanBadge ?>"><?= htmlspecialchars($data['tingkat_keparahan']) ?></span>
+                            <?php else: ?>
+                            <span class="fw-500">—</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Rekomendasi Tindakan</div>
+                        <div class="fw-500"><?= htmlspecialchars($data['rekomendasi_tindakan'] ?: '—') ?></div>
+                    </div>
+                    <?php if ($data['latitude'] && $data['longitude']): ?>
+                    <div class="col-md-6">
+                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Koordinat GPS Saat Survei</div>
+                        <div class="fw-500">
+                            <?= htmlspecialchars($data['latitude']) ?>, <?= htmlspecialchars($data['longitude']) ?>
+                            <a href="https://www.google.com/maps?q=<?= urlencode($data['latitude'] . ',' . $data['longitude']) ?>"
+                               target="_blank" class="ms-1"><i class="bi bi-box-arrow-up-right"></i></a>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php else: ?>
+                <p class="text-muted mb-0" style="font-size:0.85rem;">Belum ada data ukur / gangguan yang dicatat untuk monitoring ini.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <!-- Galeri Media -->
         <div class="card mb-4">
             <div class="card-header d-flex align-items-center gap-2">

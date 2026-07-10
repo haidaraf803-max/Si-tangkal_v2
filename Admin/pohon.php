@@ -63,29 +63,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     if ($nama_lokal != '' && $kesehatan != '' && $nama_jalan != '' && $koordinat_x !== '' && $koordinat_y !== '') {
 
-        if (
-            $model->create(
-                $nama_lokal,
-                $nama_latin,
-                $family,
-                $tahun_tanam,
-                $habitus,
-                $status_kel,
-                (float) $volume,
-                $kelas_awet,
-                $kelas_kuat,
-                (float) $berat_jenis,
-                $kesehatan,
-                (float) $serapan_co,
-                (float) $produksi_o,
-                $nama_jalan,
-                $kelurahan,
-                $kecamatan,
-                (float) $koordinat_x,
-                (float) $koordinat_y,
-                $keterangan
-            )
-        ) {
+        $fotoName = $model->uploadFoto($_FILES['foto'] ?? null);
+
+        $newId = $model->create(
+            $nama_lokal,
+            $nama_latin,
+            $family,
+            $tahun_tanam,
+            $habitus,
+            $status_kel,
+            (float) $volume,
+            $kelas_awet,
+            $kelas_kuat,
+            (float) $berat_jenis,
+            $kesehatan,
+            (float) $serapan_co,
+            (float) $produksi_o,
+            $nama_jalan,
+            $kelurahan,
+            $kecamatan,
+            (float) $koordinat_x,
+            (float) $koordinat_y,
+            $keterangan,
+            $fotoName
+        );
+
+        if ($newId) {
             $alertMsg  = 'Data pohon berhasil ditambahkan.';
             $alertType = 'success';
         } else {
@@ -281,7 +284,7 @@ require_once 'layouts/sidebar.php';
 <div class="modal fade" id="modalTambah" tabindex="-1" aria-labelledby="modalTambahLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="border-radius:var(--radius-lg); border:none; box-shadow:var(--shadow-lg);">
-            <form method="POST">
+            <form method="POST" enctype="multipart/form-data">
 
                 <input type="hidden" name="action" value="create">
 
@@ -576,6 +579,21 @@ require_once 'layouts/sidebar.php';
                                 class="form-control"
                                 placeholder="107.54123456"
                                 required>
+                        </div>
+
+                        <!-- Foto -->
+                        <div class="col-12">
+                            <label class="form-label" for="foto">
+                                Foto Pohon
+                            </label>
+
+                            <input
+                                type="file"
+                                id="foto"
+                                name="foto"
+                                class="form-control"
+                                accept=".jpg,.jpeg,.png,.webp">
+                            <div class="form-text">Format: JPG, JPEG, PNG, WEBP.</div>
                         </div>
 
                         <!-- Keterangan -->

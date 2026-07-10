@@ -168,10 +168,9 @@ require_once 'layouts/sidebar.php';
                             <div class="text-muted" style="font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Foto</div>
                             <div class="row mt-2 g-2">
                                 <div class="col-sm-12">
-                                    <!--<div class="mb-1" style="font-size:0.8rem; font-weight:600;">Sebelum</div>-->
                                     <?php if (!empty($data['foto'])): ?>
                                         <img src="../assets/foto/<?= htmlspecialchars($data['foto'] ?? '') ?>"
-                                             alt="Sebelum"
+                                             alt="Foto pohon"
                                              class="rounded-2 shadow-sm"
                                              style="max-width:100%; max-height:200px; object-fit:cover; border:1px solid var(--border-color);">
                                     <?php else: ?>
@@ -181,20 +180,6 @@ require_once 'layouts/sidebar.php';
                                         </div>
                                     <?php endif; ?>
                                 </div>
-                                <!--<div class="col-sm-6">
-                                    <div class="mb-1" style="font-size:0.8rem; font-weight:600;">Sesudah</div>
-                                    <?php if (!empty($data['DokumentasiAfter'])): ?>
-                                        <img src="../images/<?= htmlspecialchars($data['DokumentasiAfter']) ?>"
-                                             alt="Sesudah"
-                                             class="rounded-2 shadow-sm"
-                                             style="max-width:100%; max-height:200px; object-fit:cover; border:1px solid var(--border-color);">
-                                    <?php else: ?>
-                                        <div class="p-3 rounded-2 text-center text-muted" style="background:#f8fafc; border:1px dashed var(--border-color);">
-                                            <i class="bi bi-image fs-3 d-block mb-1"></i>
-                                            Belum ada foto
-                                        </div>
-                                    <?php endif; ?>
-                                </div>-->
                             </div>
                         </div>
                     </div>

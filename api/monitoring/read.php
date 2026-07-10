@@ -27,6 +27,55 @@ require_once '../config/database.php';
 
 // Session sudah otomatis dimulai oleh config.php (lihat require di atas).
 
+// ==========================================
+// HELPER: susun kolom hasil JOIN pohon_* menjadi
+// objek 'pohon' yang berisi detail & koordinat pohon,
+// lalu buang kolom pohon_* mentahnya dari level atas
+// ==========================================
+// ==========================================
+// HELPER: pastikan kolom numerik baru pada tabel monitoring
+// keluar sebagai number di JSON, bukan string (PDO mengembalikan
+// DECIMAL/FLOAT sebagai string secara default)
+// ==========================================
+function castMonitoringDetail(array $monitoring): array
+{
+    foreach (['tinggi_pohon', 'diameter_batang', 'lebar_tajuk', 'latitude', 'longitude'] as $field) {
+        if (isset($monitoring[$field]) && $monitoring[$field] !== null && $monitoring[$field] !== '') {
+            $monitoring[$field] = (float) $monitoring[$field];
+        }
+    }
+    return $monitoring;
+}
+
+function attachPohonDetail(array $monitoring): array
+{
+    $monitoring = castMonitoringDetail($monitoring);
+
+    $monitoring['pohon'] = [
+        'no_pohon'   => $monitoring['pohon_no_pohon']   ?? null,
+        'nama_lokal' => $monitoring['pohon_nama_lokal'] ?? null,
+        'nama_latin' => $monitoring['pohon_nama_latin'] ?? null,
+        'family'     => $monitoring['pohon_family']     ?? null,
+        'lat'        => isset($monitoring['pohon_koordinat_y']) ? (float)$monitoring['pohon_koordinat_y'] : null,
+        'lng'        => isset($monitoring['pohon_koordinat_x']) ? (float)$monitoring['pohon_koordinat_x'] : null,
+        'nama_jalan' => $monitoring['pohon_nama_jalan'] ?? null,
+        'kelurahan'  => $monitoring['pohon_kelurahan']  ?? null,
+        'kecamatan'  => $monitoring['pohon_kecamatan']  ?? null,
+        'kesehatan'  => $monitoring['pohon_kesehatan']  ?? null,
+        'status_kel' => $monitoring['pohon_status_kel'] ?? null,
+        'image_url'  => !empty($monitoring['pohon_foto']) ? ('assets/foto/' . $monitoring['pohon_foto']) : '',
+    ];
+
+    // buang kolom pohon_* mentah supaya response tetap rapi
+    foreach ($monitoring as $key => $value) {
+        if (strpos($key, 'pohon_') === 0) {
+            unset($monitoring[$key]);
+        }
+    }
+
+    return $monitoring;
+}
+
 try {
 
     // ==========================================
@@ -52,9 +101,23 @@ try {
         $id = (int)$_GET['id'];
 
         $stmt = $pdo->prepare("
-            SELECT *
+            SELECT
+                monitoring.*,
+                pohon.no_pohon      AS pohon_no_pohon,
+                pohon.nama_lokal    AS pohon_nama_lokal,
+                pohon.nama_latin    AS pohon_nama_latin,
+                pohon.family        AS pohon_family,
+                pohon.koordinat_x   AS pohon_koordinat_x,
+                pohon.koordinat_y   AS pohon_koordinat_y,
+                pohon.nama_jalan    AS pohon_nama_jalan,
+                pohon.kelurahan     AS pohon_kelurahan,
+                pohon.kecamatan     AS pohon_kecamatan,
+                pohon.kesehatan     AS pohon_kesehatan,
+                pohon.status_kel    AS pohon_status_kel,
+                pohon.foto          AS pohon_foto
             FROM monitoring
-            WHERE id = ?
+            LEFT JOIN pohon ON pohon.id = monitoring.pohon_id
+            WHERE monitoring.id = ?
         ");
 
         $stmt->execute([$id]);
@@ -72,6 +135,8 @@ try {
 
             exit;
         }
+
+        $monitoring = attachPohonDetail($monitoring);
 
         // ==========================
         // AMBIL MEDIA
@@ -106,10 +171,24 @@ try {
         $pohonId = (int)$_GET['pohon_id'];
 
         $stmt = $pdo->prepare("
-            SELECT *
+            SELECT
+                monitoring.*,
+                pohon.no_pohon      AS pohon_no_pohon,
+                pohon.nama_lokal    AS pohon_nama_lokal,
+                pohon.nama_latin    AS pohon_nama_latin,
+                pohon.family        AS pohon_family,
+                pohon.koordinat_x   AS pohon_koordinat_x,
+                pohon.koordinat_y   AS pohon_koordinat_y,
+                pohon.nama_jalan    AS pohon_nama_jalan,
+                pohon.kelurahan     AS pohon_kelurahan,
+                pohon.kecamatan     AS pohon_kecamatan,
+                pohon.kesehatan     AS pohon_kesehatan,
+                pohon.status_kel    AS pohon_status_kel,
+                pohon.foto          AS pohon_foto
             FROM monitoring
-            WHERE pohon_id = ?
-            ORDER BY tanggal_monitoring DESC
+            LEFT JOIN pohon ON pohon.id = monitoring.pohon_id
+            WHERE monitoring.pohon_id = ?
+            ORDER BY monitoring.tanggal_monitoring DESC
         ");
 
         $stmt->execute([$pohonId]);
@@ -117,6 +196,8 @@ try {
         $monitorings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($monitorings as &$monitoring) {
+
+            $monitoring = attachPohonDetail($monitoring);
 
             $stmtMedia = $pdo->prepare("
                 SELECT *
@@ -132,6 +213,7 @@ try {
             $monitoring['media_count'] = count($media);
             $monitoring['media'] = $media;
         }
+        unset($monitoring);
 
         echo json_encode([
             'success' => true,
@@ -146,14 +228,30 @@ try {
     // SEMUA DATA MONITORING
     // ==========================================
     $stmt = $pdo->query("
-        SELECT *
+        SELECT
+            monitoring.*,
+            pohon.no_pohon      AS pohon_no_pohon,
+            pohon.nama_lokal    AS pohon_nama_lokal,
+            pohon.nama_latin    AS pohon_nama_latin,
+            pohon.family        AS pohon_family,
+            pohon.koordinat_x   AS pohon_koordinat_x,
+            pohon.koordinat_y   AS pohon_koordinat_y,
+            pohon.nama_jalan    AS pohon_nama_jalan,
+            pohon.kelurahan     AS pohon_kelurahan,
+            pohon.kecamatan     AS pohon_kecamatan,
+            pohon.kesehatan     AS pohon_kesehatan,
+            pohon.status_kel    AS pohon_status_kel,
+            pohon.foto          AS pohon_foto
         FROM monitoring
-        ORDER BY created_at DESC
+        LEFT JOIN pohon ON pohon.id = monitoring.pohon_id
+        ORDER BY monitoring.created_at DESC
     ");
 
     $monitorings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($monitorings as &$monitoring) {
+
+        $monitoring = attachPohonDetail($monitoring);
 
         $stmtMedia = $pdo->prepare("
             SELECT *
@@ -168,6 +266,7 @@ try {
         $monitoring['media_count'] = count($media);
         $monitoring['media'] = $media;
     }
+    unset($monitoring);
 
     echo json_encode([
         'success' => true,

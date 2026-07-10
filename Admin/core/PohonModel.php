@@ -83,8 +83,9 @@ public function create(
     string $kecamatan,
     float $koordinat_x,
     float $koordinat_y,
-    string $keterangan
-): bool {
+    string $keterangan,
+    ?string $foto = null
+): int|false {
 
     $sql = "INSERT INTO pohon (
         nama_lokal,
@@ -105,7 +106,8 @@ public function create(
         kecamatan,
         koordinat_x,
         koordinat_y,
-        keterangan
+        keterangan,
+        foto
     ) VALUES (
         :nama_lokal,
         :nama_latin,
@@ -125,12 +127,13 @@ public function create(
         :kecamatan,
         :koordinat_x,
         :koordinat_y,
-        :keterangan
+        :keterangan,
+        :foto
     )";
 
     $stmt = $this->conn->prepare($sql);
 
-    return $stmt->execute([
+    $ok = $stmt->execute([
         ':nama_lokal'  => $nama_lokal,
         ':nama_latin'  => $nama_latin,
         ':family'      => $family,
@@ -150,7 +153,10 @@ public function create(
         ':koordinat_x' => $koordinat_x,
         ':koordinat_y' => $koordinat_y,
         ':keterangan'  => $keterangan,
+        ':foto'        => $foto,
     ]);
+
+    return $ok ? (int) $this->conn->lastInsertId() : false;
 }
 
     /**
@@ -176,7 +182,8 @@ public function create(
     string $kecamatan,
     float $koordinat_x,
     float $koordinat_y,
-    string $keterangan
+    string $keterangan,
+    ?string $foto = null
 ): bool {
 
     $sql = "UPDATE pohon SET
@@ -198,12 +205,19 @@ public function create(
         kecamatan = :kecamatan,
         koordinat_x = :koordinat_x,
         koordinat_y = :koordinat_y,
-        keterangan = :keterangan
-    WHERE id = :id";
+        keterangan = :keterangan";
+
+    // Foto hanya diupdate kalau ada file baru yang diupload.
+    // Kalau tidak ada upload baru, foto lama tetap dipertahankan.
+    if ($foto !== null) {
+        $sql .= ", foto = :foto";
+    }
+
+    $sql .= " WHERE id = :id";
 
     $stmt = $this->conn->prepare($sql);
 
-    return $stmt->execute([
+    $params = [
         ':nama_lokal'  => $nama_lokal,
         ':nama_latin'  => $nama_latin,
         ':family'      => $family,
@@ -224,15 +238,76 @@ public function create(
         ':koordinat_y' => $koordinat_y,
         ':keterangan'  => $keterangan,
         ':id'          => $id,
-    ]);
+    ];
+
+    if ($foto !== null) {
+        $params[':foto'] = $foto;
+    }
+
+    return $stmt->execute($params);
 }
     /**
      * Hapus data pohon berdasarkan ID.
+     * File foto fisiknya (kolom `foto`) ikut dihapus dari assets/foto.
      */
     public function delete(int $id): bool
     {
+        $data = $this->getById($id);
+        if ($data && !empty($data['foto'])) {
+            $this->deletePhotoFile($data['foto']);
+        }
+
         $stmt = $this->conn->prepare("DELETE FROM pohon WHERE id = ?");
         return $stmt->execute([$id]);
+    }
+
+    // ================================================================
+    // ===== FOTO POHON (disimpan di kolom `foto`, 1 foto per pohon) =====
+    // ================================================================
+
+    /** Ekstensi foto yang diizinkan diupload. */
+    private array $allowedFotoExt = ['jpg', 'jpeg', 'png', 'webp'];
+
+    /** Folder fisik penyimpanan foto pohon. */
+    private function fotoDir(): string
+    {
+        $dir = BASE_PATH . '/assets/foto/';
+        if (!file_exists($dir)) {
+            mkdir($dir, 0777, true);
+        }
+        return $dir;
+    }
+
+    /**
+     * Upload 1 file foto dari input <input type="file" name="foto">
+     * (elemen tunggal $_FILES['foto']). Mengembalikan nama file yang
+     * tersimpan, atau null kalau tidak ada file / upload gagal / ekstensi
+     * tidak diizinkan.
+     */
+    public function uploadFoto(?array $file): ?string
+    {
+        if (empty($file) || empty($file['name']) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            return null;
+        }
+
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($extension, $this->allowedFotoExt, true)) {
+            return null; // ekstensi tidak diizinkan
+        }
+
+        $newName  = 'pohon_' . date('YmdHis') . '_' . uniqid() . '.' . $extension;
+        $savePath = $this->fotoDir() . $newName;
+
+        return move_uploaded_file($file['tmp_name'], $savePath) ? $newName : null;
+    }
+
+    /** Hapus file fisik foto dari folder assets/foto (aman jika file tidak ada). */
+    private function deletePhotoFile(string $filename): void
+    {
+        $path = $this->fotoDir() . $filename;
+        if ($filename !== '' && is_file($path)) {
+            @unlink($path);
+        }
     }
 
     /**

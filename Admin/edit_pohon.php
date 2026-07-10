@@ -51,6 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $allowedKondisi = ['Sehat', 'Kurang Sehat', 'Sakit'];
 
     if ($nama_lokal !== '' && in_array($kesehatan, $allowedKondisi, true) && $koordinat_x !== '' && $koordinat_y !== '') {
+
+        // Kalau ada foto baru diupload, kolom foto akan diganti ke foto baru
+        // (file foto lama dibiarkan di disk, tidak otomatis dihapus)
+        $fotoName = $model->uploadFoto($_FILES['foto'] ?? null);
+
         $ok = $model->update(
             $id,
             $nama_lokal,
@@ -71,7 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $kecamatan,
             (float) $koordinat_x,
             (float) $koordinat_y,
-            $keterangan
+            $keterangan,
+            $fotoName
         );
         $statusUpdate = $ok ? 'success' : 'error';
         if ($ok) {
@@ -107,7 +113,7 @@ require_once 'layouts/sidebar.php';
                 <span class="badge bg-secondary ms-auto">#<?= $id ?></span>
             </div>
             <div class="card-body p-4">
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <div class="row g-3">
 
                         <div class="col-md-6">
@@ -242,6 +248,30 @@ require_once 'layouts/sidebar.php';
                             <input type="text" id="longitude" name="longitude" class="form-control"
                             value="<?= htmlspecialchars($data['koordinat_x']) ?>" required>
                         </div>
+                        <div class="col-12">
+                            <label class="form-label">Foto Pohon</label>
+
+                            <?php if (!empty($data['foto'])): ?>
+                            <div class="mb-2">
+                                <img src="../assets/foto/<?= htmlspecialchars($data['foto']) ?>"
+                                     class="rounded-2 shadow-sm"
+                                     style="max-width:220px; max-height:150px; object-fit:cover; border:1px solid var(--border-color);"
+                                     alt="Foto pohon saat ini">
+                                <div class="text-muted mt-1" style="font-size:0.78rem;">Foto saat ini.</div>
+                            </div>
+                            <?php else: ?>
+                            <div class="text-muted mb-2" style="font-size:0.85rem;">Belum ada foto untuk pohon ini.</div>
+                            <?php endif; ?>
+
+                            <input
+                                type="file"
+                                id="foto"
+                                name="foto"
+                                class="form-control"
+                                accept=".jpg,.jpeg,.png,.webp">
+                            <div class="form-text">Upload untuk mengganti foto (opsional). Biarkan kosong jika tidak ingin mengganti.</div>
+                        </div>
+
                         <div class="col-12">
                             <label class="form-label" for="keterangan">Keterangan</label>
                             <textarea id="keterangan" name="keterangan" class="form-control" rows="3"

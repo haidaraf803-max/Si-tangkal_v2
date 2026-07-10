@@ -126,7 +126,16 @@ try {
             user_id,
             tanggal_monitoring,
             kesehatan_monitoring,
-            catatan
+            catatan,
+            tinggi_pohon,
+            diameter_batang,
+            lebar_tajuk,
+            jenis_gangguan,
+            tingkat_keparahan,
+            rekomendasi_tindakan,
+            status_tindak_lanjut,
+            latitude,
+            longitude
         )
         VALUES
         (
@@ -134,7 +143,16 @@ try {
             :user_id,
             :tanggal_monitoring,
             :kesehatan_monitoring,
-            :catatan
+            :catatan,
+            :tinggi_pohon,
+            :diameter_batang,
+            :lebar_tajuk,
+            :jenis_gangguan,
+            :tingkat_keparahan,
+            :rekomendasi_tindakan,
+            :status_tindak_lanjut,
+            :latitude,
+            :longitude
         )
     ");
 
@@ -143,7 +161,17 @@ try {
         ':user_id' => $user_id,
         ':tanggal_monitoring' => $_POST['tanggal_monitoring'] ?? date('Y-m-d'),
         ':kesehatan_monitoring' => $_POST['kesehatan_monitoring'] ?? null,
-        ':catatan' => $_POST['catatan'] ?? null
+        ':catatan' => $_POST['catatan'] ?? null,
+        ':tinggi_pohon' => ($_POST['tinggi_pohon'] ?? '') !== '' ? (float) $_POST['tinggi_pohon'] : null,
+        ':diameter_batang' => ($_POST['diameter_batang'] ?? '') !== '' ? (float) $_POST['diameter_batang'] : null,
+        ':lebar_tajuk' => ($_POST['lebar_tajuk'] ?? '') !== '' ? (float) $_POST['lebar_tajuk'] : null,
+        ':jenis_gangguan' => $_POST['jenis_gangguan'] ?? null,
+        ':tingkat_keparahan' => $_POST['tingkat_keparahan'] ?? null,
+        ':rekomendasi_tindakan' => $_POST['rekomendasi_tindakan'] ?? null,
+        ':status_tindak_lanjut' => $_POST['status_tindak_lanjut'] ?? 'Belum',
+        // pakai koordinat GPS device yang sama dengan yang dipakai untuk validasi jarak di atas
+        ':latitude' => $userLat,
+        ':longitude' => $userLng
     ]);
 
     $monitoring_id = $pdo->lastInsertId();

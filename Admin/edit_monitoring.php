@@ -33,9 +33,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $catatan              = trim($_POST['catatan'] ?? '');
     $deleteMediaIds       = $_POST['delete_media'] ?? [];
     $files                = $_FILES['files'] ?? [];
+    $detail               = [
+        'tinggi_pohon'         => trim($_POST['tinggi_pohon'] ?? ''),
+        'diameter_batang'      => trim($_POST['diameter_batang'] ?? ''),
+        'lebar_tajuk'          => trim($_POST['lebar_tajuk'] ?? ''),
+        'jenis_gangguan'       => trim($_POST['jenis_gangguan'] ?? '') ?: null,
+        'tingkat_keparahan'    => trim($_POST['tingkat_keparahan'] ?? '') ?: null,
+        'rekomendasi_tindakan' => trim($_POST['rekomendasi_tindakan'] ?? '') ?: null,
+        'status_tindak_lanjut' => trim($_POST['status_tindak_lanjut'] ?? '') ?: 'Belum',
+        'latitude'             => trim($_POST['latitude'] ?? ''),
+        'longitude'            => trim($_POST['longitude'] ?? ''),
+    ];
 
     if ($pohon_id > 0) {
-        $result = $model->update($id, $pohon_id, $tanggal_monitoring, $kesehatan_monitoring, $catatan, $files, $deleteMediaIds);
+        $result = $model->update($id, $pohon_id, $tanggal_monitoring, $kesehatan_monitoring, $catatan, $files, $deleteMediaIds, $detail);
         $statusUpdate = $result['success'] ? 'success' : 'error';
         $errMsg = $result['message'];
         if ($result['success']) {
@@ -125,6 +136,81 @@ require_once 'layouts/sidebar.php';
                         <div class="col-12">
                             <label class="form-label" for="catatan">Catatan</label>
                             <textarea id="catatan" name="catatan" class="form-control" rows="3"><?= htmlspecialchars($data['catatan'] ?? '') ?></textarea>
+                        </div>
+
+                        <div class="col-12"><hr class="my-1"><div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Data Ukur Pohon (opsional)</div></div>
+
+                        <div class="col-md-4">
+                            <label class="form-label" for="tinggi_pohon">Tinggi Pohon (meter)</label>
+                            <input type="number" step="0.01" min="0" id="tinggi_pohon" name="tinggi_pohon" class="form-control"
+                                   value="<?= htmlspecialchars($data['tinggi_pohon'] ?? '') ?>" placeholder="mis. 8.5">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label" for="diameter_batang">Diameter Batang / DBH (cm)</label>
+                            <input type="number" step="0.01" min="0" id="diameter_batang" name="diameter_batang" class="form-control"
+                                   value="<?= htmlspecialchars($data['diameter_batang'] ?? '') ?>" placeholder="mis. 35">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label" for="lebar_tajuk">Lebar Tajuk (meter)</label>
+                            <input type="number" step="0.01" min="0" id="lebar_tajuk" name="lebar_tajuk" class="form-control"
+                                   value="<?= htmlspecialchars($data['lebar_tajuk'] ?? '') ?>" placeholder="mis. 4.2">
+                        </div>
+
+                        <div class="col-12"><hr class="my-1"><div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Gangguan & Tindak Lanjut (opsional)</div></div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="jenis_gangguan">Jenis Gangguan</label>
+                            <select id="jenis_gangguan" name="jenis_gangguan" class="form-select">
+                                <option value="">-- Tidak Ada / Tidak Diketahui --</option>
+                                <?php foreach (['Hama', 'Penyakit', 'Kerusakan Fisik', 'Lainnya'] as $opt): ?>
+                                <option value="<?= $opt ?>" <?= (($data['jenis_gangguan'] ?? '') === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="tingkat_keparahan">Tingkat Keparahan</label>
+                            <select id="tingkat_keparahan" name="tingkat_keparahan" class="form-select">
+                                <option value="">-- Pilih Tingkat --</option>
+                                <?php foreach (['Ringan', 'Sedang', 'Berat'] as $opt): ?>
+                                <option value="<?= $opt ?>" <?= (($data['tingkat_keparahan'] ?? '') === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="rekomendasi_tindakan">Rekomendasi Tindakan</label>
+                            <select id="rekomendasi_tindakan" name="rekomendasi_tindakan" class="form-select">
+                                <option value="">-- Tidak Ada --</option>
+                                <?php foreach (['Perlu Pemangkasan', 'Perlu Penyuntikan/Pengobatan', 'Perlu Penyangga', 'Ditebang', 'Lainnya'] as $opt): ?>
+                                <option value="<?= $opt ?>" <?= (($data['rekomendasi_tindakan'] ?? '') === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="status_tindak_lanjut">Status Tindak Lanjut</label>
+                            <select id="status_tindak_lanjut" name="status_tindak_lanjut" class="form-select">
+                                <?php foreach (['Belum', 'Diproses', 'Selesai'] as $opt): ?>
+                                <option value="<?= $opt ?>" <?= (($data['status_tindak_lanjut'] ?? 'Belum') === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-12"><hr class="my-1"><div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Koordinat GPS Saat Survei (opsional)</div></div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="latitude">Latitude</label>
+                            <input type="number" step="any" id="latitude" name="latitude" class="form-control"
+                                   value="<?= htmlspecialchars($data['latitude'] ?? '') ?>" placeholder="mis. -6.8872706">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="longitude">Longitude</label>
+                            <input type="number" step="any" id="longitude" name="longitude" class="form-control"
+                                   value="<?= htmlspecialchars($data['longitude'] ?? '') ?>" placeholder="mis. 107.5226141">
                         </div>
 
                         <!-- Media lama -->
