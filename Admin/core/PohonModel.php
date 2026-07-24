@@ -84,6 +84,7 @@ public function create(
     float $koordinat_x,
     float $koordinat_y,
     string $keterangan,
+    string $umur_pohon,
     ?string $foto = null
 ): int|false {
 
@@ -107,6 +108,7 @@ public function create(
         koordinat_x,
         koordinat_y,
         keterangan,
+        umur_pohon,
         foto
     ) VALUES (
         :nama_lokal,
@@ -128,6 +130,7 @@ public function create(
         :koordinat_x,
         :koordinat_y,
         :keterangan,
+        :umur_pohon,
         :foto
     )";
 
@@ -153,6 +156,7 @@ public function create(
         ':koordinat_x' => $koordinat_x,
         ':koordinat_y' => $koordinat_y,
         ':keterangan'  => $keterangan,
+        ':umur_pohon'  => $umur_pohon,
         ':foto'        => $foto,
     ]);
 
@@ -183,6 +187,7 @@ public function create(
     float $koordinat_x,
     float $koordinat_y,
     string $keterangan,
+    string $umur_pohon,
     ?string $foto = null
 ): bool {
 
@@ -205,7 +210,8 @@ public function create(
         kecamatan = :kecamatan,
         koordinat_x = :koordinat_x,
         koordinat_y = :koordinat_y,
-        keterangan = :keterangan";
+        keterangan = :keterangan,
+        umur_pohon = :umur_pohon";
 
     // Foto hanya diupdate kalau ada file baru yang diupload.
     // Kalau tidak ada upload baru, foto lama tetap dipertahankan.
@@ -237,6 +243,7 @@ public function create(
         ':koordinat_x' => $koordinat_x,
         ':koordinat_y' => $koordinat_y,
         ':keterangan'  => $keterangan,
+        ':umur_pohon'  => $umur_pohon,
         ':id'          => $id,
     ];
 

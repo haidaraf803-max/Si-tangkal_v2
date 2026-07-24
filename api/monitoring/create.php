@@ -176,6 +176,25 @@ try {
 
     $monitoring_id = $pdo->lastInsertId();
 
+    // =====================================================================
+    // SINKRONKAN STATUS KESEHATAN POHON
+    // -----------------------------------------------------------------
+    // Tabel `pohon` menyimpan kondisi TERKINI pohon, sedangkan `monitoring`
+    // menyimpan RIWAYAT tiap pemeriksaan. Supaya client cukup 1x hit untuk
+    // "nambah monitoring" DAN "update status pohon", kita sinkronkan di
+    // sini, masih di dalam transaksi yang sama dengan insert di atas —
+    // kalau salah satu gagal, keduanya di-rollback bareng.
+    // =====================================================================
+    if (!empty($_POST['kesehatan_monitoring'])) {
+        $stmtSyncPohon = $pdo->prepare(
+            "UPDATE pohon SET kesehatan = ? WHERE id = ?"
+        );
+        $stmtSyncPohon->execute([
+            $_POST['kesehatan_monitoring'],
+            $_POST['pohon_id']
+        ]);
+    }
+
     // Upload media
 
 // ==========================

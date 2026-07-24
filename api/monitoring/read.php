@@ -52,6 +52,7 @@ function attachPohonDetail(array $monitoring): array
     $monitoring = castMonitoringDetail($monitoring);
 
     $monitoring['pohon'] = [
+        'id'         => isset($monitoring['pohon_id_detail']) ? (int)$monitoring['pohon_id_detail'] : null,
         'no_pohon'   => $monitoring['pohon_no_pohon']   ?? null,
         'nama_lokal' => $monitoring['pohon_nama_lokal'] ?? null,
         'nama_latin' => $monitoring['pohon_nama_latin'] ?? null,
@@ -103,6 +104,7 @@ try {
         $stmt = $pdo->prepare("
             SELECT
                 monitoring.*,
+                pohon.id            AS pohon_id_detail,
                 pohon.no_pohon      AS pohon_no_pohon,
                 pohon.nama_lokal    AS pohon_nama_lokal,
                 pohon.nama_latin    AS pohon_nama_latin,
@@ -173,6 +175,7 @@ try {
         $stmt = $pdo->prepare("
             SELECT
                 monitoring.*,
+                pohon.id            AS pohon_id_detail,
                 pohon.no_pohon      AS pohon_no_pohon,
                 pohon.nama_lokal    AS pohon_nama_lokal,
                 pohon.nama_latin    AS pohon_nama_latin,
@@ -230,6 +233,7 @@ try {
     $stmt = $pdo->query("
         SELECT
             monitoring.*,
+            pohon.id            AS pohon_id_detail,
             pohon.no_pohon      AS pohon_no_pohon,
             pohon.nama_lokal    AS pohon_nama_lokal,
             pohon.nama_latin    AS pohon_nama_latin,

@@ -101,9 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($statusUpdate === null) {
         $ok = $model->update(
             $id,
-            trim($_POST['no_surat']    ?? ''),
-            trim($_POST['nama']        ?? ''),
-            trim($_POST['lokasi']      ?? ''),
+            trim($_POST['no_surat']      ?? ''),
+            trim($_POST['nama']          ?? ''),
+            trim($_POST['nomor_telepon'] ?? ''),
+            trim($_POST['lokasi']        ?? ''),
             trim($_POST['disposisi']   ?? ''),
             trim($_POST['survey']      ?? ''),
             trim($_POST['tanggal']     ?? ''),
@@ -159,6 +160,12 @@ require_once 'layouts/sidebar.php';
                             <label class="form-label" for="nama">Nama Pemohon <span class="text-danger">*</span></label>
                             <input type="text" id="nama" name="nama" class="form-control"
                                    value="<?= htmlspecialchars($data['Nama_Pemohon']) ?>" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label" for="nomor_telepon">Nomor Telepon</label>
+                            <input type="text" id="nomor_telepon" name="nomor_telepon" class="form-control"
+                                   value="<?= htmlspecialchars($data['Nomor_Telepon'] ?? '') ?>">
                         </div>
 
                         <div class="col-12">

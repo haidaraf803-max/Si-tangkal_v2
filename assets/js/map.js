@@ -25,23 +25,41 @@ const layerGroups = {
     wmsPucuk : L.layerGroup(),
 };
 
+// Ikon marker pohon berbentuk "pin lokasi" (bulat + lancip di bawah), digambar
+// murni pakai CSS/emoji — tidak memuat file gambar, jadi rendering tetap cepat
+// walau markernya banyak.
+const TREE_SYMBOL = {
+    sehat: '🌳',
+    'kurang-sehat': '🥀',
+    sakit: '🍂',
+};
+
+// Cache instance divIcon supaya tidak dibuat ulang setiap kali marker dirender.
+const _treeIconCache = {};
+
 function treeDivIcon(kesehatan) {
     const k = (kesehatan || '').toLowerCase();
     let cls = 'sehat';
-    let symbol = '🌳';
     if (k === 'kurang sehat') {
         cls = 'kurang-sehat';
-        symbol = '🥀';
     } else if (k === 'sakit') {
         cls = 'sakit';
-        symbol = '🍂';
     }
-    return L.divIcon({
-        html: `<div class="tree-marker ${cls}">${symbol}</div>`,
-        className: '',
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
-    });
+
+    if (!_treeIconCache[cls]) {
+        _treeIconCache[cls] = L.divIcon({
+            html: `
+                <div class="tree-pin ${cls}">
+                    <span class="tree-pin-symbol">${TREE_SYMBOL[cls]}</span>
+                </div>
+            `,
+            className: '',
+            iconSize: [30, 40],
+            iconAnchor: [15, 40],
+            popupAnchor: [0, -38],
+        });
+    }
+    return _treeIconCache[cls];
 }
 
 // ---------------- Pencarian & filter pohon (live, tanpa reload) ----------------

@@ -1,4 +1,4 @@
-    </div><!-- /.main-content -->
+</div><!-- /.main-content -->
 </div><!-- /.main-wrapper -->
 
 <!-- Bootstrap 5 JS Bundle (with Popper) -->
@@ -6,6 +6,9 @@
 
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Pagination otomatis untuk semua tabel data di halaman Admin -->
+<script src="../assets/js/table-pagination.js"></script>
 
 <!-- Sidebar Toggle Script -->
 <script>

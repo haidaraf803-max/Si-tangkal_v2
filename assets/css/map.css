@@ -35,24 +35,35 @@ html, body, #map {
     font-size: 10px !important;
 }
 
-/* Custom marker icons */
-.tree-marker {
+/* Custom marker icons — bentuk pin lokasi (teardrop), bukan bulatan polos.
+   Dibuat murni CSS (kotak dirotasi 45°) supaya ringan & cepat dirender. */
+.tree-pin {
+    position: relative;
     width: 30px;
     height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-white);
-    font-size: 14px;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+    margin-top: 4px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
     border: 2px solid var(--color-white);
+    display: flex;
 }
-.tree-marker.rw { background: var(--color-rw); }
-.tree-marker.kahati { background: var(--color-kahati); }
-.tree-marker.sehat { background: var(--color-sehat); }
-.tree-marker.kurang-sehat { background: var(--color-kurang-sehat); }
-.tree-marker.sakit { background: var(--color-sakit, #ef4444); }
+
+.tree-pin-symbol {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: rotate(45deg) translate(-50%, -50%);
+    transform-origin: 0 0;
+    font-size: 15px;
+    line-height: 1;
+}
+
+.tree-pin.rw { background: var(--color-rw); }
+.tree-pin.kahati { background: var(--color-kahati); }
+.tree-pin.sehat { background: var(--color-sehat); }
+.tree-pin.kurang-sehat { background: var(--color-kurang-sehat); }
+.tree-pin.sakit { background: var(--color-sakit, #ef4444); }
 
 .my-location-marker {
     width: 18px;

@@ -3,7 +3,7 @@
   "info": {
     "title": "SITANGKAL API",
     "description": "Dokumentasi API Monitoring Pohon",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "servers": [
     {
@@ -68,7 +68,7 @@
           "Monitoring"
         ],
         "summary": "Ambil Semua Monitoring, Riwayat Monitoring per Pohon, atau Detail Monitoring",
-        "description": "Mengembalikan data monitoring beserta detail pohon terkait (termasuk koordinat lat/lng) pada setiap item, di dalam field `pohon`. Jika parameter `id` diisi, mengembalikan 1 data monitoring detail. Jika parameter `pohon_id` diisi, mengembalikan seluruh riwayat monitoring untuk pohon tersebut. Jika tidak ada parameter, mengembalikan seluruh data monitoring.",
+        "description": "Mengembalikan data monitoring beserta detail pohon terkait (termasuk koordinat lat/lng) pada setiap item, di dalam field `pohon`. Jika parameter `id` diisi, mengembalikan 1 data monitoring detail. Jika parameter `pohon_id` diisi, mengembalikan seluruh riwayat monitoring untuk pohon tersebut. Jika tidak ada parameter, mengembalikan seluruh data monitoring. Field `pohon.id` sekarang selalu disertakan agar konsisten dengan `pohon_id` di level atas, terpisah dari `pohon.no_pohon` (nomor urut pohon yang sebenarnya).",
         "parameters": [
           {
             "name": "id",
@@ -139,6 +139,7 @@
                           "created_at": "2026-07-08 12:03:01",
                           "updated_at": "2026-07-08 12:03:01",
                           "pohon": {
+                            "id": 8,
                             "no_pohon": 8,
                             "nama_lokal": "Mangga",
                             "nama_latin": "Mangifera indica",
@@ -178,7 +179,8 @@
                         "created_at": "2026-07-08 11:37:20",
                         "updated_at": "2026-07-08 11:37:20",
                         "pohon": {
-                          "no_pohon": 3489,
+                          "id": 3489,
+                          "no_pohon": 2,
                           "nama_lokal": "Mahoni",
                           "nama_latin": "Swietenia macrophylla",
                           "family": "Meliaceae",
@@ -327,6 +329,7 @@
           "Monitoring"
         ],
         "summary": "Update Monitoring",
+        "description": "Update dilakukan lewat method POST (bukan PUT) karena parsing `multipart/form-data` untuk file upload lebih konsisten memakai POST di PHP native. Field `pohon_id` pada body dipakai untuk mengganti pohon yang direferensikan monitoring ini; response sekarang menyertakan data monitoring terbaru berikut `pohon_id` dan `pohon.id` agar id pohon jelas terlihat.",
         "requestBody": {
           "required": true,
           "content": {
@@ -341,7 +344,8 @@
                     "type": "integer"
                   },
                   "pohon_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "ID pohon (mengacu ke pohon.id) yang direferensikan oleh data monitoring ini"
                   },
                   "tanggal_monitoring": {
                     "type": "string",
@@ -422,7 +426,56 @@
         },
         "responses": {
           "200": {
-            "description": "Monitoring Berhasil Diupdate"
+            "description": "Monitoring Berhasil Diupdate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Monitoring berhasil diupdate"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MonitoringWithPohon"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "Monitoring berhasil diupdate",
+                  "data": {
+                    "id": 4,
+                    "pohon_id": 3489,
+                    "user_id": 5,
+                    "tanggal_monitoring": "2026-07-08 00:00:00",
+                    "kesehatan_monitoring": "Sehat",
+                    "catatan": "Contoh",
+                    "created_at": "2026-07-08 11:37:20",
+                    "updated_at": "2026-07-14 10:15:00",
+                    "pohon": {
+                      "id": 3489,
+                      "no_pohon": 2,
+                      "nama_lokal": "Mahoni",
+                      "nama_latin": "Swietenia macrophylla",
+                      "family": "Meliaceae",
+                      "lat": -6.9147,
+                      "lng": 107.6098,
+                      "nama_jalan": "Jl. Ir. H. Djuanda",
+                      "kelurahan": "Dago",
+                      "kecamatan": "Coblong",
+                      "kesehatan": "Sehat",
+                      "status_kel": "Dilindungi",
+                      "image_url": "assets/foto/mahoni_015.jpg"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -1021,11 +1074,17 @@
       },
       "PohonRingkas": {
         "type": "object",
-        "description": "Detail pohon terkait yang disertakan pada tiap data monitoring",
+        "description": "Detail pohon terkait yang disertakan pada tiap data monitoring. Field `id` = primary key pohon (sama dengan `pohon_id` di level monitoring); `no_pohon` adalah nomor urut pohon yang terpisah dan bisa berbeda nilainya dari `id`.",
         "properties": {
+          "id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Primary key pohon, identik dengan `pohon_id` pada level monitoring"
+          },
           "no_pohon": {
             "type": "integer",
-            "nullable": true
+            "nullable": true,
+            "description": "Nomor urut pohon (kolom asli tabel pohon, BUKAN primary key)"
           },
           "nama_lokal": {
             "type": "string",

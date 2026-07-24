@@ -47,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $koordinat_x  = trim($_POST['longitude']    ?? '');
     $koordinat_y  = trim($_POST['latitude']     ?? '');
     $keterangan   = trim($_POST['keterangan']   ?? '');
+    $umur_pohon   = trim($_POST['umur_pohon']   ?? '');
 
     $allowedKondisi = ['Sehat', 'Kurang Sehat', 'Sakit'];
 
@@ -77,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (float) $koordinat_x,
             (float) $koordinat_y,
             $keterangan,
+            $umur_pohon,
             $fotoName
         );
         $statusUpdate = $ok ? 'success' : 'error';
@@ -150,6 +152,12 @@ require_once 'layouts/sidebar.php';
                             value="<?= htmlspecialchars($data['tahun_tanam'] ?? '') ?>">
                     </div>
 
+                     <div class="col-md-6">
+                        <label class="form-label" for="umur_pohon">Umur Pohon</label>
+                        <input type="text" id="umur_pohon" name="umur_pohon" class="form-control"
+                            value="<?= htmlspecialchars($data['umur_pohon'] ?? '') ?>">
+                    </div>
+
                     <div class="col-md-6">
                         <label class="form-label" for="habitus">Habitus</label>
                         <input type="text" id="habitus" name="habitus" class="form-control"
@@ -166,7 +174,7 @@ require_once 'layouts/sidebar.php';
                             value="<?= htmlspecialchars($data['volume']) ?>">
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label" for="kelas_awet">Kelas Awet </label>
                             <select id="kelas_awet" name="kelas_awet" class="form-select">
                                 <option value="">-- Pilih Kelas --</option>
@@ -177,7 +185,7 @@ require_once 'layouts/sidebar.php';
                                 <option value="V"   <?= ($data['kelas_awet'] === 'V')   ? 'selected' : '' ?>>V</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label" for="kelas_kuat">Kelas Kuat </label>
                             <select id="kelas_kuat" name="kelas_kuat" class="form-select">
                                 <option value="">-- Pilih Kelas --</option>
@@ -188,7 +196,7 @@ require_once 'layouts/sidebar.php';
                                 <option value="V"   <?= ($data['kelas_kuat'] === 'V')   ? 'selected' : '' ?>>V</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label" for="berat_jenis">Berat Jenis </label>
                             <input type="number" step="0.000001" id="berat_jenis" name="berat_jenis" class="form-control"
                             value="<?= htmlspecialchars($data['berat_jenis']) ?>">

@@ -89,6 +89,10 @@ require_once 'layouts/sidebar.php';
                             <div class="mt-1"><?= htmlspecialchars($data['tahun_tanam'] ?? '') ?></div>
                         </div>
                         <div class="mb-4">
+                            <div class="text-muted" style="font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Tahun Tanam</div>
+                            <div class="mt-1"><?= htmlspecialchars($data['umur_pohon'] ?? '') ?></div>
+                        </div>
+                        <div class="mb-4">
                             <div class="text-muted" style="font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Habitus</div>
                             <div class="mt-1"><?= htmlspecialchars($data['habitus'] ?? '') ?></div>
                         </div>

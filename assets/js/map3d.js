@@ -23,7 +23,9 @@ Cesium.Ion.defaultAccessToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5NmZjYzliNy1jMjBhLTQ3MzItOTRjZS0yYTdiNWIxYzU2NzQiLCJpZCI6NDE3ODU1LCJpYXQiOjE3NzYxMzcwNTd9.VTMAy29dv3ktNnWiaKRPbiMC9Ln_jkPE4tIcwjVfI_k";
 
 const lod1AccessToken =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YzE3ZGYxOS1kOTgzLTRjODctOTEzNi1jNTFmMTk1YTgyMjUiLCJpZCI6MzE0NzQxLCJpYXQiOjE3NTA2NzAyNzB9.1BusO9iTg0OKy8ggDHjiqmFSdMJphg3ryyzh784m3Aw";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI1MDdiMmJiNi1kOGYwLTRiOWUtODVjOC1mYzY2YmRhZWYyNGYiLCJpZCI6NDUyODcwLCJpc3MiOiJodHRwczovL2FwaS5jZXNpdW0uY29tIiwiYXVkIjoidW5kZWZpbmVkX2RlZmF1bHQiLCJpYXQiOjE3ODMzMDkwNjV9.qdVJERUqLU5nvmqIpvwVzrxtRJy1B78mdcD7lQfPf5I";
+// const lod1AccessToken =
+//   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YzE3ZGYxOS1kOTgzLTRjODctOTEzNi1jNTFmMTk1YTgyMjUiLCJpZCI6MzE0NzQxLCJpYXQiOjE3NTA2NzAyNzB9.1BusO9iTg0OKy8ggDHjiqmFSdMJphg3ryyzh784m3Aw";
 const groundAccessToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyOTk0ODQyMC0zY2UyLTQzN2ItYjI4MC1iYjczYjBjNzY3Y2UiLCJpZCI6NDQ1NjAyLCJpc3MiOiJodHRwczovL2FwaS5jZXNpdW0uY29tIiwiYXVkIjoidW5kZWZpbmVkX2RlZmF1bHQiLCJpYXQiOjE3ODE2ODM5MDJ9.2CKYRL25KDPe5t8JSpHHYbz5RWCTi-0dHLzq2y4xcE0";
 
@@ -74,10 +76,11 @@ const vegetationLayers = {
   },
   ground: {
     label: "Ground",
-    color: "#b5651d",
+    // color: "#b5651d",
+    color: "#2fb51d",
     ids: [4980589],
     accessToken: groundAccessToken,
-    style: new Cesium.Cesium3DTileStyle({ color: "color('rgb(210,180,140)')" }),
+    style: new Cesium.Cesium3DTileStyle({ color: "color('rgb(107,142,35)')" }),
     tilesets: [],
     loaded: false,
   },
@@ -95,7 +98,8 @@ const lod2Layers = {
   bangunan: {
     label: "Bangunan LOD2",
     color: "#c084fc",
-    ids: [4972581, 4972580, 4972578, 4972576, 4972575, 4972574, 4972573, 4972571, 4972615, 4972747],
+    ids: [5069979],
+    // 4972581, 4972580, 4972578, 4972576, 4972575, 4972574, 4972573, 4972571, 4972615, 4972747, 
     source: "lod1token",
     tilesets: [],
     loaded: false,

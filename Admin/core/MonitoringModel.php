@@ -110,6 +110,30 @@ class MonitoringModel
     }
 
     /**
+     * Sinkronkan `pohon.kesehatan` (status kesehatan TERKINI) supaya sama
+     * dengan hasil pemeriksaan monitoring yang baru saja disimpan.
+     *
+     * `pohon` = status terkini, `monitoring` = riwayat per pemeriksaan.
+     * Dipanggil di dalam transaksi yang sama dengan create()/update() di
+     * bawah, supaya 1x request dari client sudah menghasilkan kedua tabel
+     * konsisten (tidak perlu request terpisah untuk update pohon).
+     */
+    private function syncPohonKesehatan(int $pohon_id, ?string $kesehatan_monitoring): void
+    {
+        if (!$kesehatan_monitoring) {
+            return;
+        }
+
+        $stmt = $this->conn->prepare(
+            "UPDATE pohon SET kesehatan = :kesehatan WHERE id = :pohon_id"
+        );
+        $stmt->execute([
+            ':kesehatan' => $kesehatan_monitoring,
+            ':pohon_id'  => $pohon_id,
+        ]);
+    }
+
+    /**
      * Tambah data monitoring baru + upload media (boleh lebih dari satu file).
      *
      * @param array $files Struktur asli dari $_FILES['files'] (boleh single atau multiple)
@@ -156,6 +180,8 @@ class MonitoringModel
             ]);
 
             $monitoringId = (int) $this->conn->lastInsertId();
+
+            $this->syncPohonKesehatan($pohon_id, $kesehatan_monitoring);
 
             $this->uploadMedia($monitoringId, $files);
 
@@ -221,6 +247,8 @@ class MonitoringModel
                 ':longitude'            => ($detail['longitude'] ?? '') !== '' ? (float) $detail['longitude'] : null,
                 ':id'                   => $id,
             ]);
+
+            $this->syncPohonKesehatan($pohon_id, $kesehatan_monitoring);
 
             if (!empty($deleteMediaIds)) {
                 $this->deleteMediaItems($id, $deleteMediaIds);

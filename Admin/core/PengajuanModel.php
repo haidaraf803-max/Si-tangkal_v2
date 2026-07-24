@@ -67,15 +67,17 @@ class PengajuanModel
     public function create(
         string $no_surat,
         string $nama,
+        string $telepon,
         string $lokasi,
         string $dokumentasi = ''
     ): bool {
-        $sql = "INSERT INTO pengajuan (No_Surat, Nama_Pemohon, Lokasi_Pohon, Disposisi_Surat, Dokumentasi)
-                VALUES (:no_surat, :nama, :lokasi, NOW(), :dokumentasi)";
+        $sql = "INSERT INTO pengajuan (No_Surat, Nama_Pemohon, Nomor_Telepon, Lokasi_Pohon, Disposisi_Surat, Dokumentasi)
+                VALUES (:no_surat, :nama, :telepon, :lokasi, NOW(), :dokumentasi)";
         $stmt = $this->conn->prepare($sql);
         return $stmt->execute([
             ':no_surat'    => $no_surat,
             ':nama'        => $nama,
+            ':telepon'     => $telepon,
             ':lokasi'      => $lokasi,
             ':dokumentasi' => $dokumentasi,
         ]);
@@ -88,6 +90,7 @@ class PengajuanModel
         int    $id,
         string $no_surat,
         string $nama,
+        string $telepon,
         string $lokasi,
         string $disposisi,
         string $survey,
@@ -99,6 +102,7 @@ class PengajuanModel
         $sql = "UPDATE pengajuan SET
                     No_Surat          = :no_surat,
                     Nama_Pemohon      = :nama,
+                    Nomor_Telepon     = :telepon,
                     Lokasi_Pohon      = :lokasi,
                     Disposisi_Surat   = :disposisi,
                     Survey_Pohon      = :survey,
@@ -112,6 +116,7 @@ class PengajuanModel
         return $stmt->execute([
             ':no_surat'         => $no_surat,
             ':nama'             => $nama,
+            ':telepon'          => $telepon,
             ':lokasi'           => $lokasi,
             ':disposisi'        => $disposisi,
             ':survey'           => $survey,

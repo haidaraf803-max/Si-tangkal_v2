@@ -114,6 +114,7 @@ require_once 'layouts/sidebar.php';
                     <tr>
                         <th class="ps-3" style="width:40px;">No</th>
                         <th>Nama Pemohon</th>
+                        <th>No Telepon</th>
                         <th>Jenis Tanaman</th>
                         <th class="text-center">Jumlah</th>
                         <th>Lokasi Tanam</th>
@@ -129,6 +130,7 @@ require_once 'layouts/sidebar.php';
                         <tr>
                             <td class="ps-3 text-muted"><?= $no++ ?></td>
                             <td class="fw-500"><?= htmlspecialchars($row['nama_pemohon']) ?></td>
+                            <td><?= htmlspecialchars($row['nomor_telepon'] ?? '-') ?></td>
                             <td><?= htmlspecialchars($row['jenis_tanaman']) ?></td>
                             <td class="text-center">
                                 <span class="badge bg-primary-subtle text-primary rounded-pill"><?= (int)$row['jumlah_tanaman'] ?></span>
@@ -170,6 +172,7 @@ require_once 'layouts/sidebar.php';
                                         data-bs-target="#modalTanggapi"
                                         data-id="<?= (int)$row['id_bibit'] ?>"
                                         data-nama="<?= htmlspecialchars($row['nama_pemohon']) ?>"
+                                        data-telepon="<?= htmlspecialchars($row['nomor_telepon'] ?? '-') ?>"
                                         data-jenis="<?= htmlspecialchars($row['jenis_tanaman']) ?>"
                                         data-jumlah="<?= (int)$row['jumlah_tanaman'] ?>"
                                         data-status="<?= htmlspecialchars($status) ?>"
@@ -188,7 +191,7 @@ require_once 'layouts/sidebar.php';
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-5">
+                            <td colspan="10" class="text-center text-muted py-5">
                                 <i class="bi bi-inbox fs-2 d-block mb-2"></i>
                                 Belum ada data permohonan bibit tanaman
                             </td>
@@ -222,6 +225,10 @@ require_once 'layouts/sidebar.php';
                             <div class="col-12">
                                 <small class="text-muted d-block" style="font-size:0.7rem;">NAMA PEMOHON</small>
                                 <span class="fw-600" id="modal_nama" style="font-size:0.9rem;">-</span>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted d-block" style="font-size:0.7rem;">NO TELEPON</small>
+                                <span class="fw-600" id="modal_telepon" style="font-size:0.9rem;">-</span>
                             </div>
                             <div class="col-6">
                                 <small class="text-muted d-block" style="font-size:0.7rem;">JENIS TANAMAN</small>
@@ -278,6 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             document.getElementById('modal_id_bibit').value       = button.getAttribute('data-id');
             document.getElementById('modal_nama').textContent     = button.getAttribute('data-nama');
+            document.getElementById('modal_telepon').textContent  = button.getAttribute('data-telepon');
             document.getElementById('modal_jenis').textContent    = button.getAttribute('data-jenis');
             document.getElementById('modal_jumlah').textContent   = button.getAttribute('data-jumlah') + ' batang';
             document.getElementById('modal_status').value         = button.getAttribute('data-status');

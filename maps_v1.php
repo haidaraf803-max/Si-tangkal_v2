@@ -1,282 +1,269 @@
-<?php
-require_once __DIR__ . '/includes/config.php';
-// Auth sudah otomatis dimuat oleh config.php di atas (lihat includes/auth.php)
-require_once __DIR__ . '/includes/TreeRepository.php';
+/**
+ * map3d.js — Si-TANGKAL Peta 3D (CesiumJS)
+ * -----------------------------------------
+ * Dipisah total dari map.js (Leaflet/peta 2D) karena Cesium butuh library,
+ * container, dan model interaksi yang berbeda. Halaman map-3d.php hanya
+ * memuat file ini, jadi tidak ada risiko file ini mengganggu peta 2D.
+ *
+ * Catatan: file ini pakai top-level `await` (mis. saat memuat terrain),
+ * makanya WAJIB dimuat sebagai <script type="module"> (lihat footer.php /
+ * $extraJsModules di map-3d.php).
+ *
+ * UI panel layer-nya dirender ke dalam #m3d-layer-groups memakai class yang
+ * SAMA dengan panel layer peta 2D (.layer-group, .layer-row, .switch, dst
+ * dari assets/css/panels.css) supaya tampilannya konsisten satu produk.
+ */
 
-$pageTitle = 'Beranda';
-$activeNav = 'home';
-$stats = TreeRepository::stats();
-?>
-<?php include __DIR__ . '/includes/header.php'; ?>
+// ======================= TOKEN =======================
+// Token Cesium ion di bawah ini publik-terbatas (dipakai untuk mengambil
+// aset 3D milik project ini dari akun Cesium ion) — sama seperti pada versi
+// sebelumnya, bukan kredensial rahasia server. Kalau perlu dibatasi lebih
+// ketat, atur pembatasan domain untuk token ini dari dashboard Cesium ion.
+Cesium.Ion.defaultAccessToken =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5NmZjYzliNy1jMjBhLTQ3MzItOTRjZS0yYTdiNWIxYzU2NzQiLCJpZCI6NDE3ODU1LCJpYXQiOjE3NzYxMzcwNTd9.VTMAy29dv3ktNnWiaKRPbiMC9Ln_jkPE4tIcwjVfI_k";
 
-<div id="map"></div>
+const lod1AccessToken =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YzE3ZGYxOS1kOTgzLTRjODctOTEzNi1jNTFmMTk1YTgyMjUiLCJpZCI6MzE0NzQxLCJpYXQiOjE3NTA2NzAyNzB9.1BusO9iTg0OKy8ggDHjiqmFSdMJphg3ryyzh784m3Aw";
+const groundAccessToken =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyOTk0ODQyMC0zY2UyLTQzN2ItYjI4MC1iYjczYjBjNzY3Y2UiLCJpZCI6NDQ1NjAyLCJpc3MiOiJodHRwczovL2FwaS5jZXNpdW0uY29tIiwiYXVkIjoidW5kZWZpbmVkX2RlZmF1bHQiLCJpYXQiOjE3ODE2ODM5MDJ9.2CKYRL25KDPe5t8JSpHHYbz5RWCTi-0dHLzq2y4xcE0";
 
-<!-- Left stack: Summary + Legend -->
-<div class="left-stack scrollbar-thin">
-    <div class="panel">
-        <div class="panel-title">Ringkasan Data</div>
-        <div class="panel-subtitle">Update terakhir: <?= date('d M Y') ?></div>
-        <div class="summary-grid">
-            <div class="summary-card">
-                <div class="summary-icon total">🌳</div>
-                <div>
-                    <div class="summary-text-label">Total Pohon</div>
-                    <div class="summary-text-value"><?= number_format($stats['total_trees'], 0, ',', '.') ?> <span>pohon</span></div>
-                </div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-icon sehat">🌱</div>
-                <div>
-                    <div class="summary-text-label">Total Pohon Sehat</div>
-                    <div class="summary-text-value"><?= number_format($stats['sehat_trees'], 0, ',', '.') ?> <span>pohon</span></div>
-                </div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-icon kurang-sehat">🥀</div>
-                <div>
-                    <div class="summary-text-label">Total Pohon Kurang Sehat</div>
-                    <div class="summary-text-value"><?= number_format($stats['kurang_sehat_trees'], 0, ',', '.') ?> <span>pohon</span></div>
-                </div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-icon sakit">🍂</div>
-                <div>
-                    <div class="summary-text-label">Total Pohon Sakit</div>
-                    <div class="summary-text-value"><?= number_format($stats['sakit_trees'] ?? 0, 0, ',', '.') ?> <span>pohon</span></div>
-                </div>
-            </div>
-        </div>
-    </div>
+// ======================= VIEWER =======================
+// Widget bawaan Cesium (timeline/animation/scene-mode/geocoder) dimatikan
+// karena tidak relevan untuk model kota statis ini dan bikin toolbar penuh —
+// kontrol layer sudah kita sediakan sendiri lewat panel di kanan.
+const viewer = new Cesium.Viewer("cesiumContainer", {
+  timeline: false,
+  animation: false,
+  baseLayerPicker: false,
+  geocoder: false,
+  sceneModePicker: false,
+  navigationHelpButton: false,
+  homeButton: true,
+  fullscreenButton: true,
+});
 
-    <div class="panel">
-        <div class="panel-title">Legenda</div>
-        <div class="legend-list" style="margin-top:10px;">
-            <div class="legend-item"><span class="legend-swatch sehat"></span> Pohon Sehat</div>
-            <div class="legend-item"><span class="legend-swatch kurang-sehat"></span> Pohon Kurang Sehat</div>
-            <div class="legend-item"><span class="legend-swatch sakit"></span> Pohon Sakit</div>
-            <div class="legend-item"><span class="legend-swatch square green"></span> Ruang Terbuka Hijau</div>
-            <div class="legend-item"><span class="legend-swatch outline"></span> Batas Kelurahan</div>
-        </div>
-    </div>
-</div>
+// ======================= CAMERA =======================
+viewer.camera.setView({
+  destination: Cesium.Cartesian3.fromDegrees(107.5413, -6.8841, 4000),
+  orientation: {
+    heading: Cesium.Math.toRadians(0),
+    pitch: Cesium.Math.toRadians(-45),
+    roll: 0,
+  },
+});
 
-<!-- Right: Layer control panel -->
-<div class="layer-panel" id="layer-panel">
-    <div class="panel">
-        <div class="layer-panel-header">
-            <div class="panel-title" style="margin-bottom:0;">Layer Peta</div>
-            <button class="panel-close" onclick="closeLayerPanel()">✕</button>
-        </div>
-        <!-- Group: Pohon GeoServer (WMS, citra raster) -->
-        <div class="layer-group" id="group-geoserver">
-            <div class="layer-group-header" onclick="toggleLayerGroup('group-geoserver')">
-                <span>Data Pohon GeoServer</span>
-                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </div>
-            <div class="layer-group-body">
-                <!-- <div class="layer-row indented">
-                    <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-primary-dark);"></span> Pohon</span>
-                    <label class="switch"><input type="checkbox" id="layer-wms-pohon"><span class="switch-slider"></span></label>
-                </div> -->
-                <div class="layer-row indented">
-                    <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-rw);"></span> Pohon RW</span>
-                    <label class="switch"><input type="checkbox" id="layer-wms-pohon-rw"><span class="switch-slider"></span></label>
-                </div>
-                <div class="layer-row indented">
-                    <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-kahati);"></span> Pohon Kahati</span>
-                    <label class="switch"><input type="checkbox" id="layer-wms-pohon-kahati"><span class="switch-slider"></span></label>
-                </div>
-            </div>
-        </div>
+viewer.terrainProvider = await Cesium.CesiumTerrainProvider.fromIonAssetId(1);
 
-        <!-- Group: Pohon Database (marker, bisa diklik) -->
-        <div class="layer-group" id="group-database">
-            <div class="layer-group-header" onclick="toggleLayerGroup('group-database')">
-                <span>🗄️ Pohon Database</span>
-                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-            </div>
-            <div class="layer-group-body">
-                <div class="layer-row indented">
-                    <span class="layer-row-label"><span class="layer-dot dual"></span> Pohon</span>
-                    <label class="switch"><input type="checkbox" id="layer-db-pohon" ><span class="switch-slider"></span></label>
-                </div>
-            </div>
-        </div>
+// ======================= DATA LAYER =======================
+const lod1Layers = {
+  bangunan: { label: "Bangunan", color: "#fb923c", ids: [4960765], tilesets: [], loaded: false },
+  water: { label: "Water", color: "#38bdf8", ids: [4960160], tilesets: [], loaded: false },
+  jalan: { label: "Jalan", color: "#a8a29e", ids: [4960157], tilesets: [], loaded: false },
+};
 
-        <div class="layer-row">
-            <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-green-space);"></span> Ruang Terbuka Hijau</span>
-            <label class="switch"><input type="checkbox" id="layer-green" ><span class="switch-slider"></span></label>
-        </div>
-        <!-- <div class="layer-row">
-            <span class="layer-row-label"><span class="layer-dot" style="border:2px dashed var(--color-gray-500); background:transparent;"></span> Batas Kelurahan</span>
-            <label class="switch"><input type="checkbox" id="layer-villages" ><span class="switch-slider"></span></label>
-        </div> -->
-        <div class="layer-row">
-            <span class="layer-row-label"><span class="layer-dot" style="border:2px dashed var(--color-primary-dark); background:transparent;"></span> Batas Kelurahan</span>
-            <label class="switch"><input type="checkbox" id="layer-districts"><span class="switch-slider"></span></label>
-        </div>
-        <div class="layer-row">
-            <span class="layer-row-label"><span class="layer-dot" style="border:2px dashed var(--color-primary-dark); background:transparent;"></span> Fotoudara</span>
-            <label class="switch"><input type="checkbox" id="layer-fotoudara" ><span class="switch-slider"></span></label>
-        </div>
-        <div class="layer-row">
-            <span class="layer-row-label"><span class="layer-dot" style="border:2px dashed var(--color-primary-dark); background:transparent;"></span> Pucuk</span>
-            <label class="switch"><input type="checkbox" id="layer-pucuk" ><span class="switch-slider"></span></label>
-        </div>
-        <!-- <div class="layer-row">
-            <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-gray-300);"></span> Jalan</span>
-            <label class="switch"><input type="checkbox" id="layer-roads" checked><span class="switch-slider"></span></label>
-        </div>
-        <div class="layer-row">
-            <span class="layer-row-label">Aa Label Lokasi</span>
-            <label class="switch"><input type="checkbox" id="layer-labels" checked><span class="switch-slider"></span></label>
-        </div> -->
-        <!-- <button class="btn-manage-layers" onclick="openManageLayerOrder()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
-            Atur Urutan Layer
-        </button> -->
-    </div>
-</div>
+// Vegetasi dibuat grup terpisah dari LOD1/LOD2 (sejajar), sama seperti versi asal.
+const vegetationLayers = {
+  vegetasi: {
+    label: "Vegetasi",
+    color: "#84cc16",
+    ids: [4957298],
+    accessToken: lod1AccessToken,
+    style: new Cesium.Cesium3DTileStyle({ color: "color('rgb(34,139,34)')" }),
+    tilesets: [],
+    loaded: false,
+  },
+  ground: {
+    label: "Ground",
+    color: "#b5651d",
+    ids: [4980589],
+    accessToken: groundAccessToken,
+    style: new Cesium.Cesium3DTileStyle({ color: "color('rgb(210,180,140)')" }),
+    tilesets: [],
+    loaded: false,
+  },
+};
 
-<!-- Far right floating action buttons -->
-<div class="fab-stack">
-    <button class="fab" id="fab-layer" onclick="toggleLayerPanel()" title="Layer">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-        <span>Layer</span>
-    </button>
-    <button class="fab" id="fab-filter" onclick="openFilter()" title="Filter">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-        <span>Filter</span>
-    </button>
-    <!-- <button class="fab" id="fab-stats" onclick="openStatistics()" title="Statistik">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-        <span>Statistik</span>
-    </button> -->
-    <button class="fab" id="fab-mylocation" onclick="locateMe()" title="Lokasi Saya">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>
-        <span>Lokasi</span>
-    </button>
-    <button class="fab" id="fab-help" onclick="openHelp()" title="Bantuan">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 115.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-        <span>Bantuan</span>
-    </button>
-</div>
+const lod2Layers = {
+  pohon: {
+    label: "Pohon LOD2",
+    color: "var(--color-primary)",
+    ids: [4649049, 4649044, 4649043, 4649042, 4648998],
+    source: "default",
+    tilesets: [],
+    loaded: false,
+  },
+  bangunan: {
+    label: "Bangunan LOD2",
+    color: "#c084fc",
+    ids: [4972581, 4972580, 4972578, 4972576, 4972575, 4972574, 4972573, 4972571, 4972615, 4972747],
+    source: "lod1token",
+    tilesets: [],
+    loaded: false,
+  },
+};
 
-<!-- Bottom info strip -->
-<!-- <div class="info-strip glass">
-    <div class="info-item">
-        <div class="info-icon">✔</div>
-        <div><div class="info-text-title">Data Terverifikasi</div><div class="info-text-sub">Validasi lapangan</div></div>
-    </div>
-    <div class="info-item">
-        <div class="info-icon">⏱</div>
-        <div><div class="info-text-title">Update Berkala</div><div class="info-text-sub">Data selalu terbaru</div></div>
-    </div>
-    <div class="info-item">
-        <div class="info-icon">👥</div>
-        <div><div class="info-text-title">Mudah Diakses</div><div class="info-text-sub">Informasi untuk semua</div></div>
-    </div>
-    <div class="info-item">
-        <div class="info-icon">🌱</div>
-        <div><div class="info-text-title">Dukung Lingkungan</div><div class="info-text-sub">Hijaukan Cimahi</div></div>
-    </div>
-</div> -->
+// ======================= RENDER PANEL LAYER =======================
+// Memakai ulang class .layer-group / .layer-row.indented / .switch dari
+// panels.css (yang juga dipakai index.php) supaya tampilan panel layer
+// peta 3D konsisten dengan peta 2D, bukan komponen baru yang beda gaya.
+function renderGroup(groupId, title, badgeCount, entries, prefix) {
+  const rows = entries
+    .map(
+      ([key, l]) => `
+        <div class="layer-row indented" data-row="${prefix}-${key}">
+          <span class="layer-row-label">
+            <span class="layer-dot" style="background:${l.color};"></span>
+            ${l.label}
+          </span>
+          <label class="switch">
+            <input type="checkbox" data-layer="${prefix}-${key}">
+            <span class="switch-slider"></span>
+          </label>
+        </div>`
+    )
+    .join("");
 
-<!-- Tree info popup card -->
-<div class="tree-popup-card glass" id="tree-popup-card" >
-    <div class="tree-popup-header">
-        <div class="tree-popup-tag">🌳 <span id="tp-category"></span></div>
-        <button class="panel-close" onclick="closeTreePopup()">✕</button>
-    </div>
-    <img class="tree-popup-image" id="tp-image" src="" alt="Tree" onerror="this.src='https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=400'">
-    <div class="tree-popup-body">
-        <div class="tree-popup-name" id="tp-name"></div>
-        <div class="tree-popup-sci" id="tp-sci"></div>
-        <div class="tree-popup-meta">
-            <div class="tree-popup-meta-row"><b>Lokasi</b> <span id="tp-address"></span></div>
-            <div class="tree-popup-meta-row"><b>Kelurahan</b> <span id="tp-village"></span></div>
-            <div class="tree-popup-meta-row"><b>Famili</b> <span id="tp-family"></span></div>
-            <div class="tree-popup-meta-row"><b>Tahun Tanam</b> <span id="tp-tahun"></span></div>
-            <div class="tree-popup-meta-row"><b>Kondisi</b> <span class="badge" id="tp-condition"></span></div>
-        </div>
-        <a class="btn-view-detail" id="tp-detail-link" href="pages/tree-detail.php" onclick="openTreeDetail(event)">
-            Lihat Detail
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-        </a>
-    </div>
-</div>
+  return `
+    <div class="layer-group collapsed" id="${groupId}">
+      <div class="layer-group-header" onclick="toggleLayerGroup('${groupId}')">
+        <span>${title} <span class="text-muted" style="font-weight:400;">(${badgeCount})</span></span>
+        <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+      <div class="layer-group-body">${rows}</div>
+    </div>`;
+}
 
-<!-- Tree detail modal — dibuka lewat tombol "Lihat Detail" di popup card
-     tanpa pindah halaman. Isinya diambil dari api/tree-detail.php (JSON)
-     lalu dirender oleh openTreeDetail() di ui.js. Kalau butuh link yang bisa
-     dibagikan/dibookmark, halaman penuhnya masih ada di pages/tree-detail.php. -->
-<div class="modal-overlay" id="tree-detail-modal">
-    <div class="modal-box modal-box-wide">
-        <div class="modal-header">
-            <h3 id="td-modal-title">Detail Pohon</h3>
-            <button class="panel-close" onclick="closeTreeDetail()">✕</button>
-        </div>
-        <div id="td-modal-body">
-            <div class="text-muted" style="padding:30px 0; text-align:center; font-size:13px;">Memuat data pohon…</div>
-        </div>
-    </div>
-</div>
+function renderLayerControl() {
+  const el = document.getElementById("m3d-layer-groups");
+  if (!el) return;
 
-<!-- Filter modal -->
-<div class="modal-overlay" id="filter-modal">
-    <div class="modal-box">
-        <div class="modal-header">
-            <h3>Filter Data Pohon</h3>
-            <button class="panel-close" onclick="closeFilterModal()">✕</button>
-        </div>
-        <div class="form-group">
-            <label>Kesehatan Pohon</label>
-            <div style="display:flex; gap:18px; margin-top:6px;">
-                <label style="display:flex; align-items:center; gap:6px; font-size:13px;"><input type="checkbox" class="filter-kesehatan" value="Sehat" checked> Sehat</label>
-                <label style="display:flex; align-items:center; gap:6px; font-size:13px;"><input type="checkbox" class="filter-kesehatan" value="Kurang Sehat" checked> Kurang Sehat</label>
-                <label style="display:flex; align-items:center; gap:6px; font-size:13px;"><input type="checkbox" class="filter-kesehatan" value="Sakit" checked> Sakit</label>
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="filter-status-kel">Status Konservasi (status_kel)</label>
-            <select id="filter-status-kel">
-                <option value="">Semua Status</option>
-                <option value="Least Concern/Resiko Rendah">Least Concern / Resiko Rendah</option>
-                <option value="Data Deficient/Kekurangan Data">Data Deficient / Kekurangan Data</option>
-                <option value="Vulnerable/Rentan">Vulnerable / Rentan</option>
-            </select>
-        </div>
-        <div class="modal-actions">
-            <button class="btn btn-outline" onclick="resetFilter()">Reset</button>
-            <button class="btn btn-outline" onclick="closeFilterModal()">Batal</button>
-            <button class="btn btn-primary" onclick="applyFilter()">Terapkan Filter</button>
-        </div>
-    </div>
-</div>
+  el.innerHTML =
+    renderGroup("m3d-group-lod1", "📦 LOD 1", Object.keys(lod1Layers).length, Object.entries(lod1Layers), "lod1") +
+    renderGroup("m3d-group-lod2", "🏢 LOD 2", Object.keys(lod2Layers).length, Object.entries(lod2Layers), "lod2") +
+    renderGroup("m3d-group-vegetation", "🌿 Vegetasi", Object.keys(vegetationLayers).length, Object.entries(vegetationLayers), "vegetation");
+}
 
-<!-- Manage layer order modal -->
-<div class="modal-overlay" id="layer-order-modal">
-    <div class="modal-box">
-        <div class="modal-header">
-            <h3>Atur Urutan Layer</h3>
-            <button class="panel-close" onclick="closeLayerOrderModal()">✕</button>
-        </div>
-        <p class="text-muted" style="font-size:12.5px; margin-bottom:14px;">Seret untuk mengubah urutan tampilan layer pada peta (layer teratas akan ditampilkan paling depan).</p>
-        <ul id="layer-order-list" style="display:flex; flex-direction:column; gap:8px;">
-            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🛰️ Pohon GeoServer (Semua)</li>
-            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🛰️ Pohon GeoServer RW</li>
-            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🛰️ Pohon GeoServer Kahati</li>
-            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🗄️ Pohon Database</li>
-            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🍃 Ruang Terbuka Hijau</li>
-            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">📍 Batas Kelurahan</li>
-            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🛣 Jalan</li>
-        </ul>
-        <div class="modal-actions">
-            <button class="btn btn-primary" onclick="closeLayerOrderModal()">Simpan Urutan</button>
-        </div>
-    </div>
-</div>
+renderLayerControl();
 
-<script>window.__sitangkalStats = <?= json_encode($stats) ?>;</script>
-<?php $extraJs = ['assets/js/data-service.js', 'assets/js/map.js', 'assets/js/ui.js']; ?>
-<?php include __DIR__ . '/includes/footer.php'; ?>
+// ======================= HELPER: state loading per baris =======================
+function setRowLoading(dataLayerKey, isLoading) {
+  const row = document.querySelector(`[data-row="${dataLayerKey}"]`);
+  if (row) row.classList.toggle("m3d-loading", isLoading);
+  const checkbox = document.querySelector(`[data-layer="${dataLayerKey}"]`);
+  if (checkbox) checkbox.disabled = isLoading;
+}
+
+// ======================= LOAD LOD1 =======================
+async function loadLOD1Layer(key, checked) {
+  const group = lod1Layers[key];
+  const rowKey = `lod1-${key}`;
+
+  if (!group.loaded && checked) {
+    setRowLoading(rowKey, true);
+    try {
+      for (const id of group.ids) {
+        const resource = await Cesium.IonResource.fromAssetId(id, { accessToken: lod1AccessToken });
+        const tileset = await Cesium.Cesium3DTileset.fromUrl(resource);
+
+        if (key === "water") {
+          tileset.style = new Cesium.Cesium3DTileStyle({ color: "color('rgb(30, 144, 255)')" });
+        }
+
+        viewer.scene.primitives.add(tileset);
+        group.tilesets.push(tileset);
+      }
+      group.loaded = true;
+    } catch (e) {
+      console.error(`Gagal memuat layer LOD1 "${key}"`, e);
+    } finally {
+      setRowLoading(rowKey, false);
+    }
+  }
+
+  group.tilesets.forEach((t) => (t.show = checked));
+}
+
+// ======================= LOAD LOD2 =======================
+async function loadLOD2Layer(layerKey, checked) {
+  const group = lod2Layers[layerKey];
+  const rowKey = `lod2-${layerKey}`;
+
+  if (!group.loaded && checked) {
+    setRowLoading(rowKey, true);
+    try {
+      for (const id of group.ids) {
+        let tileset;
+
+        if (group.source === "default") {
+          tileset = await Cesium.Cesium3DTileset.fromIonAssetId(id);
+        } else {
+          const resource = await Cesium.IonResource.fromAssetId(id, { accessToken: lod1AccessToken });
+          tileset = await Cesium.Cesium3DTileset.fromUrl(resource);
+        }
+
+        if (layerKey === "pohon") {
+          tileset.style = new Cesium.Cesium3DTileStyle({ color: "color('rgb(34,139,34)')" });
+        }
+        if (layerKey === "bangunan") {
+          tileset.style = new Cesium.Cesium3DTileStyle({ color: "color('rgb(220,220,220)')" });
+        }
+
+        viewer.scene.primitives.add(tileset);
+        group.tilesets.push(tileset);
+      }
+      group.loaded = true;
+    } catch (e) {
+      console.error(`Gagal memuat layer LOD2 "${layerKey}"`, e);
+    } finally {
+      setRowLoading(rowKey, false);
+    }
+  }
+
+  group.tilesets.forEach((t) => (t.show = checked));
+}
+
+// ======================= LOAD VEGETASI (grup terpisah) =======================
+async function loadVegetationLayer(layerKey, checked) {
+  const group = vegetationLayers[layerKey];
+  const rowKey = `vegetation-${layerKey}`;
+  if (!group) return;
+
+  if (!group.loaded && checked) {
+    setRowLoading(rowKey, true);
+    try {
+      for (const id of group.ids) {
+        const resource = await Cesium.IonResource.fromAssetId(id, { accessToken: group.accessToken });
+        const tileset = await Cesium.Cesium3DTileset.fromUrl(resource);
+
+        if (group.style) tileset.style = group.style;
+
+        viewer.scene.primitives.add(tileset);
+        group.tilesets.push(tileset);
+      }
+      group.loaded = true;
+    } catch (e) {
+      console.error(`Gagal memuat layer vegetasi "${layerKey}"`, e);
+    } finally {
+      setRowLoading(rowKey, false);
+    }
+  }
+
+  group.tilesets.forEach((t) => (t.show = checked));
+}
+
+// Data LOD2 / Vegetasi / LOD1 hanya dimuat saat switch-nya pertama kali
+// dinyalakan (lazy load) — supaya buka halaman 3D tidak langsung menarik
+// semua tileset sekaligus.
+document.addEventListener("change", async (e) => {
+  const layer = e.target.dataset.layer;
+  if (!layer) return;
+  const checked = e.target.checked;
+
+  if (layer.startsWith("lod1-")) {
+    await loadLOD1Layer(layer.replace("lod1-", ""), checked);
+  } else if (layer.startsWith("lod2-")) {
+    await loadLOD2Layer(layer.replace("lod2-", ""), checked);
+  } else if (layer.startsWith("vegetation-")) {
+    await loadVegetationLayer(layer.replace("vegetation-", ""), checked);
+  }
+});

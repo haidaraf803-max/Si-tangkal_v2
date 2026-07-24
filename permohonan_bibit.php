@@ -6,6 +6,7 @@ $status_action = null;
 /* ======================= PROSES INSERT ======================= */
 if (isset($_POST['simpan_bibit'])) {
     $nama_pemohon   = trim($_POST['nama_pemohon'] ?? '');
+    $nomor_telepon  = trim($_POST['nomor_telepon'] ?? '');
     $jenis_tanaman  = trim($_POST['jenis_tanaman'] ?? '');
     $jumlah_tanaman = (int) ($_POST['jumlah_tanaman'] ?? 0);
     $lokasi_nanam   = trim($_POST['lokasi_nanam'] ?? '');
@@ -13,14 +14,15 @@ if (isset($_POST['simpan_bibit'])) {
     if ($nama_pemohon && $jenis_tanaman && $jumlah_tanaman > 0 && $lokasi_nanam) {
         try {
             $stmt = $config->prepare(
-                "INSERT INTO permohonan_bibit (nama_pemohon, jenis_tanaman, jumlah_tanaman, lokasi_nanam)
-                 VALUES (:nama, :jenis, :jumlah, :lokasi)"
+                "INSERT INTO permohonan_bibit (nama_pemohon, nomor_telepon, jenis_tanaman, jumlah_tanaman, lokasi_nanam)
+                 VALUES (:nama, :telepon, :jenis, :jumlah, :lokasi)"
             );
             $result = $stmt->execute([
-                ':nama'   => $nama_pemohon,
-                ':jenis'  => $jenis_tanaman,
-                ':jumlah' => $jumlah_tanaman,
-                ':lokasi' => $lokasi_nanam,
+                ':nama'    => $nama_pemohon,
+                ':telepon' => $nomor_telepon,
+                ':jenis'   => $jenis_tanaman,
+                ':jumlah'  => $jumlah_tanaman,
+                ':lokasi'  => $lokasi_nanam,
             ]);
             $status_action = $result ? 'success' : 'error';
         } catch (PDOException $e) {
@@ -267,6 +269,11 @@ require_once __DIR__ . '/includes/site-header.php';
             <div class="form-floating mb-3">
               <input type="text" name="nama_pemohon" class="form-control" id="nama_pemohon" placeholder="Nama Lengkap" required>
               <label for="nama_pemohon">Nama Pemohon / Instansi</label>
+            </div>
+
+            <div class="form-floating mb-3">
+              <input type="text" name="nomor_telepon" class="form-control" id="nomor_telepon" placeholder="No Telepon" required>
+              <label for="nomor_telepon">Nomor Telepon</label>
             </div>
 
             <div class="form-floating mb-3">

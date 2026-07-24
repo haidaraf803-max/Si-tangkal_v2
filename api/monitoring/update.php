@@ -108,6 +108,26 @@ try {
         $id
     ]);
 
+    // =====================================================================
+    // SINKRONKAN STATUS KESEHATAN POHON
+    // -----------------------------------------------------------------
+    // Sama seperti di create.php: `pohon.kesehatan` adalah status TERKINI,
+    // `monitoring.kesehatan_monitoring` adalah RIWAYAT per pemeriksaan.
+    // Disinkronkan di sini (masih 1 transaksi dengan UPDATE monitoring di
+    // atas) supaya client tidak perlu request terpisah untuk update pohon.
+    // Pakai pohon_id yang baru disubmit, jaga-jaga kalau monitoring ini
+    // dipindah ke pohon lain saat diedit.
+    // =====================================================================
+    if (!empty($_POST['kesehatan_monitoring']) && !empty($_POST['pohon_id'])) {
+        $stmtSyncPohon = $pdo->prepare(
+            "UPDATE pohon SET kesehatan = ? WHERE id = ?"
+        );
+        $stmtSyncPohon->execute([
+            $_POST['kesehatan_monitoring'],
+            $_POST['pohon_id']
+        ]);
+    }
+
     // =========================
     // CEK FILE UPLOAD
     // =========================

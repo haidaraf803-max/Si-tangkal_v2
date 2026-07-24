@@ -43,6 +43,7 @@ if (isset($_POST['simpan'])) {
         $result = $pengajuan->create(
             $_POST['no_surat'],
             $_POST['nama_pemohon'],
+            $_POST['nomor_telepon'],
             $_POST['lokasi_pohon'],
             $namaFileBaru
         );
@@ -337,6 +338,11 @@ require_once __DIR__ . '/includes/site-header.php';
             <div class="form-floating mb-3">
               <input type="text" name="nama_pemohon" class="form-control" id="nama_pemohon" placeholder="Nama Lengkap / Instansi" required>
               <label for="nama_pemohon">Nama Pemohon / Instansi</label>
+            </div>
+
+            <div class="form-floating mb-3">
+              <input type="text" name="nomor_telepon" class="form-control" id="nomor_telepon" placeholder="No Telepon" required>
+              <label for="nomor_telepon">Nomber Telepon</label>
             </div>
 
             <div class="form-floating mb-3">

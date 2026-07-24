@@ -60,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $koordinat_y  = trim($_POST['latitude'] ?? '');
 
     $keterangan   = trim($_POST['keterangan'] ?? '');
+    $umur_pohon   = trim($_POST['umur_pohon'] ?? '');
 
     if ($nama_lokal != '' && $kesehatan != '' && $nama_jalan != '' && $koordinat_x !== '' && $koordinat_y !== '') {
 
@@ -85,6 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             (float) $koordinat_x,
             (float) $koordinat_y,
             $keterangan,
+            $umur_pohon,
             $fotoName
         );
 
@@ -102,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $alertType = 'warning';
 
     }
+    
 
 }
 
@@ -377,6 +380,18 @@ require_once 'layouts/sidebar.php';
                                 class="form-control"
                                 placeholder="Contoh: 2020">
                         </div>
+                         <div class="col-md-6">
+                            <label class="form-label" for="umur_pohon">
+                                Umur Pohon
+                            </label>
+
+                            <input
+                                type="number"
+                                id="umur_pohon"
+                                name="umur_pohon"
+                                class="form-control"
+                                placeholder="34">
+                        </div>
 
                         <!-- Habitus -->
                         <div class="col-md-6">
@@ -422,7 +437,7 @@ require_once 'layouts/sidebar.php';
                         </div>
 
                         <!-- Kelas Awet -->
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label" for="kelas_awet">
                                 Kelas Awet
                             </label>
@@ -443,7 +458,7 @@ require_once 'layouts/sidebar.php';
                         </div>
 
                         <!-- Kelas Kuat -->
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label" for="kelas_kuat">
                                 Kelas Kuat
                             </label>
@@ -464,7 +479,7 @@ require_once 'layouts/sidebar.php';
                         </div>
 
                         <!-- Berat Jenis -->
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label" for="berat_jenis">
                                 Berat Jenis
                             </label>

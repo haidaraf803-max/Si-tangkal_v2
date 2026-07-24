@@ -73,6 +73,10 @@ require_once 'layouts/sidebar.php';
                             <div class="fw-600 mt-1"><?= htmlspecialchars($data['Nama_Pemohon']) ?></div>
                         </div>
                         <div class="mb-4">
+                            <div class="text-muted" style="font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Nomor Telepon</div>
+                            <div class="fw-600 mt-1"><?= htmlspecialchars($data['Nomor_Telepon'] ?? '-') ?></div>
+                        </div>
+                        <div class="mb-4">
                             <div class="text-muted" style="font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Lokasi Pohon</div>
                             <div class="mt-1"><?= htmlspecialchars($data['Lokasi_Pohon']) ?></div>
                         </div>
