@@ -109,6 +109,8 @@ try {
 
             'tahun_tanam' => $row['tahun_tanam'] ?? '',
 
+            'umur_pohon' => $row['umur_pohon'] ?? '',
+
             'habitus' => $row['habitus'] ?? '',
 
             'volume' => $row['volume'] ?? '',

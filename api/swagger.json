@@ -151,6 +151,7 @@
                             "kecamatan": "Cimahi Selatan",
                             "kesehatan": "Sehat",
                             "status_kel": "Data Deficient/Kekurangan Data",
+                            "umur_pohon": null,
                             "image_url": "assets/foto/jlncibeber_20220928_103552.jpg"
                           },
                           "media_count": 1,
@@ -191,6 +192,7 @@
                           "kecamatan": "Coblong",
                           "kesehatan": "Sehat",
                           "status_kel": "Dilindungi",
+                          "umur_pohon": null,
                           "image_url": "assets/foto/mahoni_015.jpg"
                         },
                         "media_count": 1,
@@ -470,6 +472,7 @@
                       "kecamatan": "Coblong",
                       "kesehatan": "Sehat",
                       "status_kel": "Dilindungi",
+                      "umur_pohon": null,
                       "image_url": "assets/foto/mahoni_015.jpg"
                     }
                   }
@@ -678,6 +681,7 @@
                           "keterangan": null,
                           "foto": "jlncibeber_20220928_103109.jpg",
                           "flag": "0",
+                          "umur_pohon": null,
                           "image_url": "assets/foto/jlncibeber_20220928_103109.jpg"
                         }
                       ]
@@ -698,6 +702,7 @@
                         "koordinat_x": 107.523,
                         "koordinat_y": -6.88674,
                         "foto": "jlncibeber_20220928_103109.jpg",
+                        "umur_pohon": null,
                         "image_url": "assets/foto/jlncibeber_20220928_103109.jpg"
                       }
                     }
@@ -1057,6 +1062,11 @@
           "tahun_tanam": {
             "type": "string"
           },
+          "umur_pohon": {
+            "type": "string",
+            "nullable": true,
+            "description": "Umur pohon (kolom umur_pohon pada tabel pohon)"
+          },
           "habitus": {
             "type": "string"
           },
@@ -1129,6 +1139,11 @@
           "status_kel": {
             "type": "string",
             "nullable": true
+          },
+          "umur_pohon": {
+            "type": "string",
+            "nullable": true,
+            "description": "Umur pohon (kolom umur_pohon pada tabel pohon)"
           },
           "image_url": {
             "type": "string"
@@ -1343,6 +1358,11 @@
               "0",
               "1"
             ]
+          },
+          "umur_pohon": {
+            "type": "string",
+            "nullable": true,
+            "description": "Umur pohon (kolom asli tabel `pohon`)"
           },
           "image_url": {
             "type": "string",

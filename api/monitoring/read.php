@@ -64,6 +64,7 @@ function attachPohonDetail(array $monitoring): array
         'kecamatan'  => $monitoring['pohon_kecamatan']  ?? null,
         'kesehatan'  => $monitoring['pohon_kesehatan']  ?? null,
         'status_kel' => $monitoring['pohon_status_kel'] ?? null,
+        'umur_pohon' => $monitoring['pohon_umur_pohon'] ?? null,
         'image_url'  => !empty($monitoring['pohon_foto']) ? ('assets/foto/' . $monitoring['pohon_foto']) : '',
     ];
 
@@ -116,7 +117,8 @@ try {
                 pohon.kecamatan     AS pohon_kecamatan,
                 pohon.kesehatan     AS pohon_kesehatan,
                 pohon.status_kel    AS pohon_status_kel,
-                pohon.foto          AS pohon_foto
+                pohon.foto          AS pohon_foto,
+                pohon.umur_pohon    AS pohon_umur_pohon
             FROM monitoring
             LEFT JOIN pohon ON pohon.id = monitoring.pohon_id
             WHERE monitoring.id = ?
@@ -187,7 +189,8 @@ try {
                 pohon.kecamatan     AS pohon_kecamatan,
                 pohon.kesehatan     AS pohon_kesehatan,
                 pohon.status_kel    AS pohon_status_kel,
-                pohon.foto          AS pohon_foto
+                pohon.foto          AS pohon_foto,
+                pohon.umur_pohon    AS pohon_umur_pohon
             FROM monitoring
             LEFT JOIN pohon ON pohon.id = monitoring.pohon_id
             WHERE monitoring.pohon_id = ?
@@ -245,7 +248,8 @@ try {
             pohon.kecamatan     AS pohon_kecamatan,
             pohon.kesehatan     AS pohon_kesehatan,
             pohon.status_kel    AS pohon_status_kel,
-            pohon.foto          AS pohon_foto
+            pohon.foto          AS pohon_foto,
+            pohon.umur_pohon    AS pohon_umur_pohon
         FROM monitoring
         LEFT JOIN pohon ON pohon.id = monitoring.pohon_id
         ORDER BY monitoring.created_at DESC

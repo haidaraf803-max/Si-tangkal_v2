@@ -87,6 +87,7 @@ class TreeRepository
                 'district' => $row['kecamatan'] ?? '',
                 'habitus' => $row['habitus'] ?? '',
                 'tahun_tanam' => $tahunTanam,
+                'umur_pohon' => $row['umur_pohon'] ?? null,
                 'age_years' => $ageYears,
                 // Not tracked in the real schema (no diameter/height columns) — kept null on purpose.
                 'diameter_cm' => null,
