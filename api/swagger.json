@@ -248,6 +248,11 @@
                   "kesehatan_monitoring": {
                     "type": "string"
                   },
+                  "umur_pohon": {
+                    "type": "string",
+                    "maxLength": 4,
+                    "description": "Umur pohon (tahun), diisi lewat form monitoring dan disinkronkan ke pohon.umur_pohon (opsional)"
+                  },
                   "catatan": {
                     "type": "string"
                   },
@@ -355,6 +360,11 @@
                   },
                   "kesehatan_monitoring": {
                     "type": "string"
+                  },
+                  "umur_pohon": {
+                    "type": "string",
+                    "maxLength": 4,
+                    "description": "Umur pohon (tahun), diisi lewat form monitoring dan disinkronkan ke pohon.umur_pohon (opsional)"
                   },
                   "catatan": {
                     "type": "string"

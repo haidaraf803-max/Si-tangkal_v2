@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $deleteMediaIds       = $_POST['delete_media'] ?? [];
     $files                = $_FILES['files'] ?? [];
     $detail               = [
+        'umur_pohon'           => trim($_POST['umur_pohon'] ?? ''),
         'tinggi_pohon'         => trim($_POST['tinggi_pohon'] ?? ''),
         'diameter_batang'      => trim($_POST['diameter_batang'] ?? ''),
         'lebar_tajuk'          => trim($_POST['lebar_tajuk'] ?? ''),
@@ -139,6 +140,12 @@ require_once 'layouts/sidebar.php';
                         </div>
 
                         <div class="col-12"><hr class="my-1"><div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Data Ukur Pohon (opsional)</div></div>
+
+                        <div class="col-md-4">
+                            <label class="form-label" for="umur_pohon">Umur Pohon (tahun)</label>
+                            <input type="text" maxlength="4" id="umur_pohon" name="umur_pohon" class="form-control"
+                                   value="<?= htmlspecialchars($data['umur_pohon'] ?? '') ?>" placeholder="mis. 5">
+                        </div>
 
                         <div class="col-md-4">
                             <label class="form-label" for="tinggi_pohon">Tinggi Pohon (meter)</label>

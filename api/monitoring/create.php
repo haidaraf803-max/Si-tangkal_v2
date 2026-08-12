@@ -195,6 +195,25 @@ try {
         ]);
     }
 
+    // =====================================================================
+    // SINKRONKAN UMUR POHON
+    // -----------------------------------------------------------------
+    // Sama seperti sinkronisasi `kesehatan` di atas: kolom `umur_pohon`
+    // adalah milik tabel `pohon` (bukan `monitoring`), jadi saat petugas
+    // mengisi umur pohon lewat form monitoring, nilainya disimpan ke
+    // `pohon.umur_pohon` supaya langsung tampil di data pohon maupun di
+    // detail monitoring (yang membaca umur via JOIN ke tabel pohon).
+    // =====================================================================
+    if (($_POST['umur_pohon'] ?? '') !== '') {
+        $stmtSyncUmur = $pdo->prepare(
+            "UPDATE pohon SET umur_pohon = ? WHERE id = ?"
+        );
+        $stmtSyncUmur->execute([
+            $_POST['umur_pohon'],
+            $_POST['pohon_id']
+        ]);
+    }
+
     // Upload media
 
 // ==========================

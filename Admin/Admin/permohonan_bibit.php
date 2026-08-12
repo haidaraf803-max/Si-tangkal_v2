@@ -84,9 +84,9 @@ require_once 'layouts/sidebar.php';
         <p class="text-muted mb-0" style="font-size:0.8rem;">Kelola semua permohonan bibit tanaman dari masyarakat</p>
     </div>
     <div class="d-flex align-items-center gap-2">
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalExportBibit">
+        <a class="btn btn-outline-success" href="export_permohonan_bibit.php" target="_blank">
             <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-        </button>
+        </a>
         <span class="badge rounded-pill" style="background:var(--accent-light); color:#0d7a3e; font-size:0.75rem; padding:0.45em 0.9em;">
             <i class="bi bi-flower1 me-1"></i> <?= count($data) ?> Data
         </span>
@@ -299,62 +299,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
-<!-- ======= MODAL: EXPORT CSV DATA PERMOHONAN BIBIT ======= -->
-<div class="modal fade" id="modalExportBibit" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="GET" action="export_permohonan_bibit.php" target="_blank">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Data Permohonan Bibit (CSV)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <label class="form-label fw-semibold">Pilihan Data</label>
-
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="mode" id="exportBibitAll" value="all" checked
-                               onchange="document.getElementById('bibitRangeFields').style.display='none';">
-                        <label class="form-check-label" for="exportBibitAll">
-                            Export Seluruh Data Permohonan Bibit
-                        </label>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="radio" name="mode" id="exportBibitRange" value="range"
-                               onchange="document.getElementById('bibitRangeFields').style.display='flex';">
-                        <label class="form-check-label" for="exportBibitRange">
-                            Export Berdasarkan Tanggal Permohonan
-                        </label>
-                    </div>
-
-                    <div id="bibitRangeFields" class="row g-2" style="display:none;">
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_awal">Dari Tanggal</label>
-                            <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_akhir">Sampai Tanggal</label>
-                            <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text">
-                                Kosongkan salah satu jika ingin membatasi hanya dari/sampai tanggal tertentu saja.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-download me-1"></i> Export CSV
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <?php require_once 'layouts/footer.php'; ?>

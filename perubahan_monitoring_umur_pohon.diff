@@ -1,0 +1,287 @@
+==================================================================
+FILE: maps.php
+==================================================================
+--- work/sitangkal_before/maps.php	2026-08-04 06:42:28.602538437 +0000
++++ sitangkal_extracted/maps.php	2026-08-04 06:54:38.464487723 +0000
+@@ -197,6 +197,7 @@
+             <div class="tree-popup-meta-row"><b>Kelurahan</b> <span id="tp-village"></span></div>
+             <div class="tree-popup-meta-row"><b>Famili</b> <span id="tp-family"></span></div>
+             <div class="tree-popup-meta-row"><b>Tahun Tanam</b> <span id="tp-tahun"></span></div>
++            <div class="tree-popup-meta-row"><b>Umur Pohon</b> <span id="tp-umur"></span></div>
+             <div class="tree-popup-meta-row"><b>Kondisi</b> <span class="badge" id="tp-condition"></span></div>
+         </div>
+         <a class="btn-view-detail" id="tp-detail-link" href="pages/tree-detail.php" onclick="openTreeDetail(event)">
+@@ -306,6 +307,11 @@
+             </div>
+ 
+             <div class="form-group">
++                <label for="mon-umur">Umur Pohon (tahun)</label>
++                <input type="text" id="mon-umur" name="umur_pohon" maxlength="4" inputmode="numeric" placeholder="mis. 5 (opsional)">
++            </div>
++
++            <div class="form-group">
+                 <label for="mon-catatan">Catatan</label>
+                 <textarea id="mon-catatan" name="catatan" rows="3" placeholder="Catatan hasil monitoring (opsional)"></textarea>
+             </div>
+
+==================================================================
+FILE: pages/tree-detail.php
+==================================================================
+--- work/sitangkal_before/pages/tree-detail.php	2026-08-04 06:42:28.601145154 +0000
++++ sitangkal_extracted/pages/tree-detail.php	2026-08-04 06:54:45.255960777 +0000
+@@ -87,6 +87,7 @@
+                     <div class="detail-meta-item"><b>Famili</b><?= htmlspecialchars($tree['family'] ?: '-') ?></div>
+                     <div class="detail-meta-item"><b>Habitus</b><?= htmlspecialchars($tree['habitus'] ?: '-') ?></div>
+                     <div class="detail-meta-item"><b>Tahun Tanam</b><?= $tree['tahun_tanam'] ?? '-' ?></div>
++                    <div class="detail-meta-item"><b>Umur Pohon</b><?= !empty($tree['umur_pohon']) ? htmlspecialchars($tree['umur_pohon']) . ' tahun' : '-' ?></div>
+                     <div class="detail-meta-item"><b>ID Pohon</b>#<?= $tree['id'] ?></div>
+                 </div>
+ 
+@@ -146,6 +147,11 @@
+             </div>
+ 
+             <div class="form-group">
++                <label for="mon-umur">Umur Pohon (tahun)</label>
++                <input type="text" id="mon-umur" name="umur_pohon" maxlength="4" inputmode="numeric" placeholder="mis. 5 (opsional)">
++            </div>
++
++            <div class="form-group">
+                 <label for="mon-catatan">Catatan</label>
+                 <textarea id="mon-catatan" name="catatan" rows="3" placeholder="Catatan hasil monitoring (opsional)"></textarea>
+             </div>
+
+==================================================================
+FILE: api/monitoring/create.php
+==================================================================
+--- work/sitangkal_before/api/monitoring/create.php	2026-08-04 06:42:28.374713036 +0000
++++ sitangkal_extracted/api/monitoring/create.php	2026-08-04 06:42:44.849021072 +0000
+@@ -195,6 +195,25 @@
+         ]);
+     }
+ 
++    // =====================================================================
++    // SINKRONKAN UMUR POHON
++    // -----------------------------------------------------------------
++    // Sama seperti sinkronisasi `kesehatan` di atas: kolom `umur_pohon`
++    // adalah milik tabel `pohon` (bukan `monitoring`), jadi saat petugas
++    // mengisi umur pohon lewat form monitoring, nilainya disimpan ke
++    // `pohon.umur_pohon` supaya langsung tampil di data pohon maupun di
++    // detail monitoring (yang membaca umur via JOIN ke tabel pohon).
++    // =====================================================================
++    if (($_POST['umur_pohon'] ?? '') !== '') {
++        $stmtSyncUmur = $pdo->prepare(
++            "UPDATE pohon SET umur_pohon = ? WHERE id = ?"
++        );
++        $stmtSyncUmur->execute([
++            $_POST['umur_pohon'],
++            $_POST['pohon_id']
++        ]);
++    }
++
+     // Upload media
+ 
+ // ==========================
+
+==================================================================
+FILE: api/monitoring/update.php
+==================================================================
+--- work/sitangkal_before/api/monitoring/update.php	2026-08-04 06:42:28.375080446 +0000
++++ sitangkal_extracted/api/monitoring/update.php	2026-08-04 06:42:51.424858138 +0000
+@@ -128,6 +128,23 @@
+         ]);
+     }
+ 
++    // =====================================================================
++    // SINKRONKAN UMUR POHON
++    // -----------------------------------------------------------------
++    // Sama seperti create.php: `umur_pohon` adalah kolom milik tabel
++    // `pohon`, disinkronkan di sini (masih 1 transaksi dengan UPDATE
++    // monitoring di atas) memakai pohon_id yang baru disubmit.
++    // =====================================================================
++    if (($_POST['umur_pohon'] ?? '') !== '' && !empty($_POST['pohon_id'])) {
++        $stmtSyncUmur = $pdo->prepare(
++            "UPDATE pohon SET umur_pohon = ? WHERE id = ?"
++        );
++        $stmtSyncUmur->execute([
++            $_POST['umur_pohon'],
++            $_POST['pohon_id']
++        ]);
++    }
++
+     // =========================
+     // CEK FILE UPLOAD
+     // =========================
+
+==================================================================
+FILE: api/swagger.json
+==================================================================
+--- work/sitangkal_before/api/swagger.json	2026-08-04 06:42:28.376327481 +0000
++++ sitangkal_extracted/api/swagger.json	2026-08-04 06:43:54.554339566 +0000
+@@ -248,6 +248,11 @@
+                   "kesehatan_monitoring": {
+                     "type": "string"
+                   },
++                  "umur_pohon": {
++                    "type": "string",
++                    "maxLength": 4,
++                    "description": "Umur pohon (tahun), diisi lewat form monitoring dan disinkronkan ke pohon.umur_pohon (opsional)"
++                  },
+                   "catatan": {
+                     "type": "string"
+                   },
+@@ -356,6 +361,11 @@
+                   "kesehatan_monitoring": {
+                     "type": "string"
+                   },
++                  "umur_pohon": {
++                    "type": "string",
++                    "maxLength": 4,
++                    "description": "Umur pohon (tahun), diisi lewat form monitoring dan disinkronkan ke pohon.umur_pohon (opsional)"
++                  },
+                   "catatan": {
+                     "type": "string"
+                   },
+
+==================================================================
+FILE: Admin/monitoring.php
+==================================================================
+--- work/sitangkal_before/Admin/monitoring.php	2026-08-04 06:42:28.372966946 +0000
++++ sitangkal_extracted/Admin/monitoring.php	2026-08-04 06:49:13.817731267 +0000
+@@ -36,6 +36,7 @@
+     $catatan              = trim($_POST['catatan'] ?? '');
+     $files                = $_FILES['files'] ?? [];
+     $detail               = [
++        'umur_pohon'           => trim($_POST['umur_pohon'] ?? ''),
+         'tinggi_pohon'         => trim($_POST['tinggi_pohon'] ?? ''),
+         'diameter_batang'      => trim($_POST['diameter_batang'] ?? ''),
+         'lebar_tajuk'          => trim($_POST['lebar_tajuk'] ?? ''),
+@@ -340,6 +341,11 @@
+                         <div class="col-12"><hr class="my-1"><div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Data Ukur Pohon (opsional)</div></div>
+ 
+                         <div class="col-md-4">
++                            <label class="form-label" for="umur_pohon">Umur Pohon (tahun)</label>
++                            <input type="text" maxlength="4" id="umur_pohon" name="umur_pohon" class="form-control" placeholder="mis. 5">
++                        </div>
++
++                        <div class="col-md-4">
+                             <label class="form-label" for="tinggi_pohon">Tinggi Pohon (meter)</label>
+                             <input type="number" step="0.01" min="0" id="tinggi_pohon" name="tinggi_pohon" class="form-control" placeholder="mis. 8.5">
+                         </div>
+
+==================================================================
+FILE: Admin/edit_monitoring.php
+==================================================================
+--- work/sitangkal_before/Admin/edit_monitoring.php	2026-08-04 06:42:28.371634709 +0000
++++ sitangkal_extracted/Admin/edit_monitoring.php	2026-08-04 06:49:27.737039173 +0000
+@@ -34,6 +34,7 @@
+     $deleteMediaIds       = $_POST['delete_media'] ?? [];
+     $files                = $_FILES['files'] ?? [];
+     $detail               = [
++        'umur_pohon'           => trim($_POST['umur_pohon'] ?? ''),
+         'tinggi_pohon'         => trim($_POST['tinggi_pohon'] ?? ''),
+         'diameter_batang'      => trim($_POST['diameter_batang'] ?? ''),
+         'lebar_tajuk'          => trim($_POST['lebar_tajuk'] ?? ''),
+@@ -141,6 +142,12 @@
+                         <div class="col-12"><hr class="my-1"><div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Data Ukur Pohon (opsional)</div></div>
+ 
+                         <div class="col-md-4">
++                            <label class="form-label" for="umur_pohon">Umur Pohon (tahun)</label>
++                            <input type="text" maxlength="4" id="umur_pohon" name="umur_pohon" class="form-control"
++                                   value="<?= htmlspecialchars($data['umur_pohon'] ?? '') ?>" placeholder="mis. 5">
++                        </div>
++
++                        <div class="col-md-4">
+                             <label class="form-label" for="tinggi_pohon">Tinggi Pohon (meter)</label>
+                             <input type="number" step="0.01" min="0" id="tinggi_pohon" name="tinggi_pohon" class="form-control"
+                                    value="<?= htmlspecialchars($data['tinggi_pohon'] ?? '') ?>" placeholder="mis. 8.5">
+
+==================================================================
+FILE: Admin/core/MonitoringModel.php
+==================================================================
+--- work/sitangkal_before/Admin/core/MonitoringModel.php	2026-08-04 06:42:28.370444006 +0000
++++ sitangkal_extracted/Admin/core/MonitoringModel.php	2026-08-04 06:49:22.186170566 +0000
+@@ -67,7 +67,7 @@
+         $stmt = $this->conn->prepare(
+             "SELECT m.*,
+                     p.nama_lokal, p.nama_latin, p.family, p.nama_jalan, p.kelurahan, p.kecamatan,
+-                    p.kesehatan AS kesehatan_pohon_saat_ini, p.foto AS foto_pohon,
++                    p.kesehatan AS kesehatan_pohon_saat_ini, p.umur_pohon, p.foto AS foto_pohon,
+                     u.Name AS petugas_name, u.Username AS petugas_username
+              FROM monitoring m
+              LEFT JOIN pohon p ON p.id = m.pohon_id
+@@ -134,6 +134,27 @@
+     }
+ 
+     /**
++     * Sinkronkan `pohon.umur_pohon` dengan umur yang diisi lewat form
++     * monitoring. Sama seperti syncPohonKesehatan() di atas: `umur_pohon`
++     * adalah kolom milik tabel `pohon`, bukan `monitoring`, jadi harus
++     * ditulis ke sana supaya langsung tampil di data pohon.
++     */
++    private function syncPohonUmur(int $pohon_id, ?string $umur_pohon): void
++    {
++        if ($umur_pohon === null || $umur_pohon === '') {
++            return;
++        }
++
++        $stmt = $this->conn->prepare(
++            "UPDATE pohon SET umur_pohon = :umur_pohon WHERE id = :pohon_id"
++        );
++        $stmt->execute([
++            ':umur_pohon' => $umur_pohon,
++            ':pohon_id'   => $pohon_id,
++        ]);
++    }
++
++    /**
+      * Tambah data monitoring baru + upload media (boleh lebih dari satu file).
+      *
+      * @param array $files Struktur asli dari $_FILES['files'] (boleh single atau multiple)
+@@ -182,6 +203,7 @@
+             $monitoringId = (int) $this->conn->lastInsertId();
+ 
+             $this->syncPohonKesehatan($pohon_id, $kesehatan_monitoring);
++            $this->syncPohonUmur($pohon_id, $detail['umur_pohon'] ?? null);
+ 
+             $this->uploadMedia($monitoringId, $files);
+ 
+@@ -249,6 +271,7 @@
+             ]);
+ 
+             $this->syncPohonKesehatan($pohon_id, $kesehatan_monitoring);
++            $this->syncPohonUmur($pohon_id, $detail['umur_pohon'] ?? null);
+ 
+             if (!empty($deleteMediaIds)) {
+                 $this->deleteMediaItems($id, $deleteMediaIds);
+
+==================================================================
+FILE: Admin/detail_monitoring.php
+==================================================================
+--- work/sitangkal_before/Admin/detail_monitoring.php	2026-08-04 06:42:28.371043134 +0000
++++ sitangkal_extracted/Admin/detail_monitoring.php	2026-08-04 06:54:54.029745567 +0000
+@@ -120,6 +120,10 @@
+                         <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Kondisi Kesehatan Pohon (Terkini)</div>
+                         <div class="fw-500"><?= htmlspecialchars($data['kesehatan_pohon_saat_ini'] ?? '—') ?></div>
+                     </div>
++                    <div class="col-md-6">
++                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Umur Pohon (Terkini)</div>
++                        <div class="fw-500"><?= !empty($data['umur_pohon']) ? htmlspecialchars($data['umur_pohon']) . ' tahun' : '—' ?></div>
++                    </div>
+                 </div>
+             </div>
+         </div>
+
+==================================================================
+FILE: assets/js/map.js
+==================================================================
+--- work/sitangkal_before/assets/js/map.js	2026-08-04 06:42:28.424732076 +0000
++++ sitangkal_extracted/assets/js/map.js	2026-08-04 06:54:41.267629533 +0000
+@@ -342,6 +342,7 @@
+     document.getElementById('tp-village').textContent = tree.village;
+     document.getElementById('tp-family').textContent = tree.family || '-';
+     document.getElementById('tp-tahun').textContent = tree.tahun_tanam || '-';
++    document.getElementById('tp-umur').textContent = tree.umur_pohon ? (tree.umur_pohon + ' tahun') : '-';
+ 
+     const condBadge = document.getElementById('tp-condition');
+     const kesehatan = tree.kesehatan || '-';
+

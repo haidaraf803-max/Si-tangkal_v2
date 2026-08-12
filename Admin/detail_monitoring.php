@@ -120,6 +120,10 @@ require_once 'layouts/sidebar.php';
                         <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Kondisi Kesehatan Pohon (Terkini)</div>
                         <div class="fw-500"><?= htmlspecialchars($data['kesehatan_pohon_saat_ini'] ?? '—') ?></div>
                     </div>
+                    <div class="col-md-6">
+                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Umur Pohon (Terkini)</div>
+                        <div class="fw-500"><?= !empty($data['umur_pohon']) ? htmlspecialchars($data['umur_pohon']) . ' tahun' : '—' ?></div>
+                    </div>
                 </div>
             </div>
         </div>

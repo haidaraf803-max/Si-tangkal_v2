@@ -128,6 +128,23 @@ try {
         ]);
     }
 
+    // =====================================================================
+    // SINKRONKAN UMUR POHON
+    // -----------------------------------------------------------------
+    // Sama seperti create.php: `umur_pohon` adalah kolom milik tabel
+    // `pohon`, disinkronkan di sini (masih 1 transaksi dengan UPDATE
+    // monitoring di atas) memakai pohon_id yang baru disubmit.
+    // =====================================================================
+    if (($_POST['umur_pohon'] ?? '') !== '' && !empty($_POST['pohon_id'])) {
+        $stmtSyncUmur = $pdo->prepare(
+            "UPDATE pohon SET umur_pohon = ? WHERE id = ?"
+        );
+        $stmtSyncUmur->execute([
+            $_POST['umur_pohon'],
+            $_POST['pohon_id']
+        ]);
+    }
+
     // =========================
     // CEK FILE UPLOAD
     // =========================

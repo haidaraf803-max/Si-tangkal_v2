@@ -9,6 +9,69 @@ const INITIAL_ZOOM = 13;
 const MAX_MAP_ZOOM = 22; // Zoom maksimal peta — dinaikkan agar bisa zoom lebih dekat
 
 let map;
+
+// ---------------- Basemap (peta dasar) ----------------
+// Beberapa pilihan basemap gratis (tanpa API key) yang bisa dipilih user.
+const baseLayers = {
+    osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 22,
+        maxNativeZoom: 19,
+    }),
+    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        maxZoom: 22,
+        maxNativeZoom: 19,
+    }),
+    light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        maxZoom: 22,
+        maxNativeZoom: 19,
+    }),
+    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        maxZoom: 22,
+        maxNativeZoom: 19,
+    }),
+};
+
+let activeBaseLayer = null;
+
+// Ganti basemap yang sedang aktif. Layer sebelumnya dilepas, layer baru
+// dipasang lalu didorong ke belakang supaya semua overlay (pohon, RTH, dll)
+// tetap tampil di atasnya. Pilihan disimpan di localStorage supaya "diingat"
+// saat user membuka peta lagi lain waktu.
+function setBasemap(key) {
+    if (!baseLayers[key] || !map) return;
+    if (activeBaseLayer) {
+        map.removeLayer(activeBaseLayer);
+    }
+    activeBaseLayer = baseLayers[key];
+    activeBaseLayer.addTo(map);
+    activeBaseLayer.bringToBack();
+    try { localStorage.setItem('sitangkal_basemap', key); } catch (e) { /* abaikan jika storage diblokir */ }
+}
+
+// Menyambungkan radio button pilihan basemap (id="basemap") di panel layer
+// ke fungsi setBasemap(), dan memuat kembali pilihan terakhir user jika ada.
+function bindBasemapToggle() {
+    const radios = document.querySelectorAll('input[name="basemap"]');
+    if (!radios.length) return;
+
+    let saved = null;
+    try { saved = localStorage.getItem('sitangkal_basemap'); } catch (e) { /* abaikan */ }
+    const initial = (saved && baseLayers[saved]) ? saved : 'osm';
+
+    radios.forEach((radio) => {
+        radio.checked = (radio.value === initial);
+        radio.addEventListener('change', () => {
+            if (radio.checked) setBasemap(radio.value);
+        });
+    });
+
+    return initial;
+}
+
 const layerGroups = {
     // Pohon — Database (marker, klikable, dari tabel `pohon` lewat api/trees.php)
     dbPohon: L.layerGroup(),
@@ -92,11 +155,10 @@ function initMap() {
         maxZoom: MAX_MAP_ZOOM,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: MAX_MAP_ZOOM,
-        maxNativeZoom: 19, // tile OSM asli mentok di 19 — di atas itu otomatis di-upscale, bukan hilang
-    }).addTo(map);
+    // Basemap awal: pakai pilihan terakhir user (tersimpan di localStorage)
+    // kalau ada, kalau tidak default ke OpenStreetMap.
+    const initialBasemap = bindBasemapToggle() || 'osm';
+    setBasemap(initialBasemap);
 
     // Add default-on layers
     // layerGroups.dbPohon.addTo(map);
@@ -342,6 +404,7 @@ function showTreePopup(tree, marker) {
     document.getElementById('tp-village').textContent = tree.village;
     document.getElementById('tp-family').textContent = tree.family || '-';
     document.getElementById('tp-tahun').textContent = tree.tahun_tanam || '-';
+    document.getElementById('tp-umur').textContent = tree.umur_pohon ? (tree.umur_pohon + ' tahun') : '-';
 
     const condBadge = document.getElementById('tp-condition');
     const kesehatan = tree.kesehatan || '-';

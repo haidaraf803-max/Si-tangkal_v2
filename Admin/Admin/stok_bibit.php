@@ -120,9 +120,9 @@ require_once 'layouts/sidebar.php';
         <p class="text-muted mb-0" style="font-size:0.85rem;">Manajemen persediaan bibit tanaman (APBD & Mandiri)</p>
     </div>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalExportStok">
+        <a class="btn btn-outline-success" href="export_stok_bibit.php<?= (!empty($filter_sumber) && $filter_sumber !== 'Semua Kategori') ? '?filter_sumber=' . urlencode($filter_sumber) : '' ?>" target="_blank">
             <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-        </button>
+        </a>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTambahStok">
             <i class="bi bi-plus-lg me-1"></i> Tambah Stok Baru
         </button>
@@ -327,62 +327,5 @@ require_once 'layouts/sidebar.php';
 </div>
 
 
-
-<!-- ======= MODAL: EXPORT CSV DATA STOK BIBIT ======= -->
-<div class="modal fade" id="modalExportStok" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="GET" action="export_stok_bibit.php" target="_blank">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Data Stok Bibit (CSV)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <label class="form-label fw-semibold">Pilihan Data</label>
-
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="mode" id="exportStokAll" value="all" checked
-                               onchange="document.getElementById('stokRangeFields').style.display='none';">
-                        <label class="form-check-label" for="exportStokAll">
-                            Export Seluruh Data Stok Bibit
-                        </label>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="radio" name="mode" id="exportStokRange" value="range"
-                               onchange="document.getElementById('stokRangeFields').style.display='flex';">
-                        <label class="form-check-label" for="exportStokRange">
-                            Export Berdasarkan Tanggal Update
-                        </label>
-                    </div>
-
-                    <div id="stokRangeFields" class="row g-2" style="display:none;">
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_awal">Dari Tanggal</label>
-                            <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_akhir">Sampai Tanggal</label>
-                            <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text">
-                                Kosongkan salah satu jika ingin membatasi hanya dari/sampai tanggal tertentu saja.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-download me-1"></i> Export CSV
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <?php require_once 'layouts/footer.php'; ?>

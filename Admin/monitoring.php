@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
     $catatan              = trim($_POST['catatan'] ?? '');
     $files                = $_FILES['files'] ?? [];
     $detail               = [
+        'umur_pohon'           => trim($_POST['umur_pohon'] ?? ''),
         'tinggi_pohon'         => trim($_POST['tinggi_pohon'] ?? ''),
         'diameter_batang'      => trim($_POST['diameter_batang'] ?? ''),
         'lebar_tajuk'          => trim($_POST['lebar_tajuk'] ?? ''),
@@ -82,6 +83,9 @@ require_once 'layouts/sidebar.php';
         <p class="text-muted mb-0" style="font-size:0.8rem;">Kelola riwayat monitoring kondisi pohon beserta dokumentasi foto/video</p>
     </div>
     <div>
+        <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalExportMonitoring">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+        </button>
         <!-- <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTambah">
             <i class="bi bi-plus-lg me-1"></i> Tambah Monitoring
         </button> -->
@@ -337,6 +341,11 @@ require_once 'layouts/sidebar.php';
                         <div class="col-12"><hr class="my-1"><div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Data Ukur Pohon (opsional)</div></div>
 
                         <div class="col-md-4">
+                            <label class="form-label" for="umur_pohon">Umur Pohon (tahun)</label>
+                            <input type="text" maxlength="4" id="umur_pohon" name="umur_pohon" class="form-control" placeholder="mis. 5">
+                        </div>
+
+                        <div class="col-md-4">
                             <label class="form-label" for="tinggi_pohon">Tinggi Pohon (meter)</label>
                             <input type="number" step="0.01" min="0" id="tinggi_pohon" name="tinggi_pohon" class="form-control" placeholder="mis. 8.5">
                         </div>
@@ -420,6 +429,63 @@ require_once 'layouts/sidebar.php';
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i>Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ======= MODAL: EXPORT CSV DATA MONITORING ======= -->
+<div class="modal fade" id="modalExportMonitoring" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="GET" action="export_monitoring.php" target="_blank">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Data Monitoring (CSV)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <label class="form-label fw-semibold">Pilihan Data</label>
+
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="mode" id="exportMonAll" value="all" checked
+                               onchange="document.getElementById('monRangeFields').style.display='none';">
+                        <label class="form-check-label" for="exportMonAll">
+                            Export Seluruh Data Monitoring
+                        </label>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="mode" id="exportMonRange" value="range"
+                               onchange="document.getElementById('monRangeFields').style.display='flex';">
+                        <label class="form-check-label" for="exportMonRange">
+                            Export Berdasarkan Rentang Tanggal Monitoring
+                        </label>
+                    </div>
+
+                    <div id="monRangeFields" class="row g-2" style="display:none;">
+                        <div class="col-6">
+                            <label class="form-label" for="tanggal_awal">Dari Tanggal</label>
+                            <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="tanggal_akhir">Sampai Tanggal</label>
+                            <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <div class="form-text">
+                                Kosongkan salah satu jika ingin membatasi hanya dari/sampai tanggal tertentu saja.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-download me-1"></i> Export CSV
+                    </button>
                 </div>
             </form>
         </div>

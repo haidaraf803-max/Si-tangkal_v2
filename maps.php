@@ -67,6 +67,38 @@ $stats = TreeRepository::stats();
             <div class="panel-title" style="margin-bottom:0;">Layer Peta</div>
             <button class="panel-close" onclick="closeLayerPanel()">✕</button>
         </div>
+        <!-- Group: Basemap (jenis peta dasar) -->
+        <div class="layer-group" id="group-basemap">
+            <div class="layer-group-header" onclick="toggleLayerGroup('group-basemap')">
+                <span>Basemaps</span>
+                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="layer-group-body">
+                <div class="basemap-options">
+                    <label class="basemap-option">
+                        <input type="radio" name="basemap" id="basemap-osm" value="osm" checked>
+                        <span class="basemap-thumb basemap-thumb-osm"></span>
+                        <span class="basemap-label">Jalan</span>
+                    </label>
+                    <label class="basemap-option">
+                        <input type="radio" name="basemap" id="basemap-satellite" value="satellite">
+                        <span class="basemap-thumb basemap-thumb-satellite"></span>
+                        <span class="basemap-label">Satelit</span>
+                    </label>
+                    <label class="basemap-option">
+                        <input type="radio" name="basemap" id="basemap-light" value="light">
+                        <span class="basemap-thumb basemap-thumb-light"></span>
+                        <span class="basemap-label">Terang</span>
+                    </label>
+                    <label class="basemap-option">
+                        <input type="radio" name="basemap" id="basemap-dark" value="dark">
+                        <span class="basemap-thumb basemap-thumb-dark"></span>
+                        <span class="basemap-label">Gelap</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
         <!-- Group: Pohon GeoServer (WMS, citra raster) -->
         <div class="layer-group" id="group-geoserver">
             <div class="layer-group-header" onclick="toggleLayerGroup('group-geoserver')">
@@ -197,6 +229,7 @@ $stats = TreeRepository::stats();
             <div class="tree-popup-meta-row"><b>Kelurahan</b> <span id="tp-village"></span></div>
             <div class="tree-popup-meta-row"><b>Famili</b> <span id="tp-family"></span></div>
             <div class="tree-popup-meta-row"><b>Tahun Tanam</b> <span id="tp-tahun"></span></div>
+            <div class="tree-popup-meta-row"><b>Umur Pohon</b> <span id="tp-umur"></span></div>
             <div class="tree-popup-meta-row"><b>Kondisi</b> <span class="badge" id="tp-condition"></span></div>
         </div>
         <a class="btn-view-detail" id="tp-detail-link" href="pages/tree-detail.php" onclick="openTreeDetail(event)">
@@ -303,6 +336,11 @@ $stats = TreeRepository::stats();
                     <option value="Kurang Sehat">Kurang Sehat</option>
                     <option value="Sakit">Sakit</option>
                 </select>
+            </div>
+
+            <div class="form-group">
+                <label for="mon-umur">Umur Pohon (tahun)</label>
+                <input type="text" id="mon-umur" name="umur_pohon" maxlength="4" inputmode="numeric" placeholder="mis. 5 (opsional)">
             </div>
 
             <div class="form-group">

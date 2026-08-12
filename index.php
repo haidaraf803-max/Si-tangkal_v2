@@ -7,20 +7,8 @@ $totalSehat = $pohonModel->countByKondisi('Sehat');
 $totalKurangBaik = $pohonModel->countByKondisi('Kurang Sehat');
 $totalMati = $pohonModel->countByKondisi('Sakit');
 
-// ===== AMBIL DATA STOK BIBIT TERSEDIA (> 0) =====
-try {
-    $stmtStokUser = $config->query("SELECT * FROM stok_bibit WHERE jumlah_tersedia > 0 ORDER BY jenis_tanaman ASC");
-    $dataStokUser = $stmtStokUser->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Memilah data berdasarkan sumber bibit untuk keperluan Nav-Tabs
-    $stokUserApbd = array_filter($dataStokUser, fn($item) => $item['sumber_bibit'] === 'APBD');
-    $stokUserMandiri = array_filter($dataStokUser, fn($item) => $item['sumber_bibit'] === 'Pembibitan Mandiri');
-    $stokUserHibah = array_filter($dataStokUser, fn($item) => $item['sumber_bibit'] === 'Hibah');
-} catch (PDOException $e) {
-    $stokUserApbd = [];
-    $stokUserMandiri = [];
-    $stokUserHibah = [];
-}
+// Catatan: Informasi Stok Bibit SENGAJA TIDAK ditampilkan di halaman
+// utama (beranda). Data stok bibit tetap bisa dikelola lewat Admin.
 ?>
 <?php
 $pageTitle = 'Si-TANGKAL - Kota Cimahi';
@@ -139,18 +127,6 @@ $extraHead = <<<'HTML'
       border-color: #f1f5f9;
       margin: 4px 16px;
     }
-
-    /* ================= STOK BIBIT SECTION ================= */
-    .stok-section {
-      padding: 100px 0;
-      background: #fff;
-    }
-    .nav-pills-custom .nav-link { color: #64748b; font-weight: 500; border-radius: 50rem; transition: 0.3s; }
-    .nav-pills-custom .nav-link:hover { color: #059669; background: #f1f5f9; }
-    .nav-pills-custom .nav-link.active { background-color: #059669; color: #fff; box-shadow: 0 4px 10px rgba(5,150,105,0.3); }
-    .hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .hover-lift:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important; }
-
 
     /* ================= HERO SECTION ================= */
     #hero {
@@ -555,185 +531,6 @@ require_once __DIR__ . '/includes/site-header.php';
               <p class="text-muted">RTH menjadi pembatas (buffer) antara satu ruang dengan ruang lainnya demi tata letak yang baik.</p>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ======= SECTION STOK BIBIT TERSEDIA ======= -->
-    <section id="stok-bibit" class="stok-section">
-      <div class="container">
-        <div class="section-title">
-          <h2>Katalog Bibit</h2>
-          <h3>Informasi <span>Stok Bibit</span> Tersedia</h3>
-        </div>
-
-        <div class="custom-card mb-5">
-            <!-- Nav Tabs Filter -->
-            <div class="d-flex justify-content-center mb-5">
-                <ul class="nav nav-pills nav-pills-custom" id="stokTab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active px-4 py-2" id="apbd-tab" data-bs-toggle="pill" data-bs-target="#apbd-stok" type="button" role="tab">
-                            <i class="bi bi-building me-2"></i>Sumber APBD
-                        </button>
-                    </li>
-                    <li class="nav-item ms-2" role="presentation">
-                        <button class="nav-link px-4 py-2" id="mandiri-tab" data-bs-toggle="pill" data-bs-target="#mandiri-stok" type="button" role="tab">
-                            <i class="bi bi-tree me-2"></i>Pembibitan Mandiri
-                        </button>
-                    </li>
-                    <li class="nav-item ms-2" role="presentation">
-                        <button class="nav-link px-4 py-2" id="hibah-tab" data-bs-toggle="pill" data-bs-target="#hibah-stok" type="button" role="tab">
-                            <i class="bi bi-gift me-2"></i>Hibah
-                        </button>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Tab Content -->
-            <div class="tab-content" id="stokTabContent">
-                
-                <!-- Tab APBD -->
-                <div class="tab-pane fade show active" id="apbd-stok" role="tabpanel">
-                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
-                        <?php if(!empty($stokUserApbd)): ?>
-                            <?php foreach($stokUserApbd as $item): 
-                                $stok = (int)$item['jumlah_tersedia'];
-                                $isTerbatas = $stok < 10;
-                            ?>
-                            <div class="col">
-                                <div class="card h-100 hover-lift border-0" style="background:#f8fafc; border-radius: 16px;">
-                                    <div class="card-body text-center p-4">
-                                        <div class="mb-3">
-                                            <div style="width: 70px; height: 70px; background: rgba(5,150,105,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                                                <i class="bi bi-flower1" style="font-size:2rem; color:#059669;"></i>
-                                            </div>
-                                        </div>
-                                        <h6 class="fw-bold text-dark mb-1"><?= htmlspecialchars($item['jenis_tanaman']) ?></h6>
-                                        <p class="text-muted small mb-3">APBD</p>
-                                        
-                                        <div class="d-flex align-items-center justify-content-center gap-1">
-                                            <span class="fs-4 fw-bolder text-dark lh-1"><?= $stok ?></span>
-                                            <span style="font-size:0.8rem; padding-top:4px;" class="text-muted fw-bold">btg</span>
-                                        </div>
-                                    </div>
-                                    <div class="card-footer bg-transparent border-0 pb-4 text-center">
-                                        <?php if($isTerbatas): ?>
-                                            <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2 border border-warning-subtle">
-                                                <i class="bi bi-exclamation-circle me-1"></i> Stok Terbatas
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 border border-success-subtle">
-                                                <i class="bi bi-check-circle me-1"></i> Tersedia
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <div class="col-12 text-center py-5">
-                                <i class="bi bi-box-seam text-muted opacity-50 mb-3 d-block" style="font-size: 3rem;"></i>
-                                <p class="text-muted mb-0 fw-bold">Tidak ada stok bibit dari APBD yang tersedia saat ini.</p>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <!-- Tab Mandiri -->
-                <div class="tab-pane fade" id="mandiri-stok" role="tabpanel">
-                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
-                        <?php if(!empty($stokUserMandiri)): ?>
-                            <?php foreach($stokUserMandiri as $item): 
-                                $stok = (int)$item['jumlah_tersedia'];
-                                $isTerbatas = $stok < 10;
-                            ?>
-                            <div class="col">
-                                <div class="card h-100 hover-lift border-0" style="background:#f8fafc; border-radius: 16px;">
-                                    <div class="card-body text-center p-4">
-                                        <div class="mb-3">
-                                            <div style="width: 70px; height: 70px; background: rgba(16,185,129,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                                                <i class="bi bi-tree" style="font-size:2rem; color:#10b981;"></i>
-                                            </div>
-                                        </div>
-                                        <h6 class="fw-bold text-dark mb-1"><?= htmlspecialchars($item['jenis_tanaman']) ?></h6>
-                                        <p class="text-muted small mb-3">Pembibitan Mandiri</p>
-                                        
-                                        <div class="d-flex align-items-center justify-content-center gap-1">
-                                            <span class="fs-4 fw-bolder text-dark lh-1"><?= $stok ?></span>
-                                            <span style="font-size:0.8rem; padding-top:4px;" class="text-muted fw-bold">btg</span>
-                                        </div>
-                                    </div>
-                                    <div class="card-footer bg-transparent border-0 pb-4 text-center">
-                                        <?php if($isTerbatas): ?>
-                                            <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2 border border-warning-subtle">
-                                                <i class="bi bi-exclamation-circle me-1"></i> Stok Terbatas
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 border border-success-subtle">
-                                                <i class="bi bi-check-circle me-1"></i> Tersedia
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <div class="col-12 text-center py-5">
-                                <i class="bi bi-box-seam text-muted opacity-50 mb-3 d-block" style="font-size: 3rem;"></i>
-                                <p class="text-muted mb-0 fw-bold">Tidak ada stok bibit dari Pembibitan Mandiri yang tersedia saat ini.</p>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <!-- Tab Hibah -->
-                <div class="tab-pane fade" id="hibah-stok" role="tabpanel">
-                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
-                        <?php if(!empty($stokUserHibah)): ?>
-                            <?php foreach($stokUserHibah as $item): 
-                                $stok = (int)$item['jumlah_tersedia'];
-                                $isTerbatas = $stok < 10;
-                            ?>
-                            <div class="col">
-                                <div class="card h-100 hover-lift border-0" style="background:#f8fafc; border-radius: 16px;">
-                                    <div class="card-body text-center p-4">
-                                        <div class="mb-3">
-                                            <div style="width: 70px; height: 70px; background: rgba(234,179,8,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                                                <i class="bi bi-gift" style="font-size:2rem; color:#eab308;"></i>
-                                            </div>
-                                        </div>
-                                        <h6 class="fw-bold text-dark mb-1"><?= htmlspecialchars($item['jenis_tanaman']) ?></h6>
-                                        <p class="text-muted small mb-3">Hibah CSR/Donatur</p>
-                                        
-                                        <div class="d-flex align-items-center justify-content-center gap-1">
-                                            <span class="fs-4 fw-bolder text-dark lh-1"><?= $stok ?></span>
-                                            <span style="font-size:0.8rem; padding-top:4px;" class="text-muted fw-bold">btg</span>
-                                        </div>
-                                    </div>
-                                    <div class="card-footer bg-transparent border-0 pb-4 text-center">
-                                        <?php if($isTerbatas): ?>
-                                            <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2 border border-warning-subtle">
-                                                <i class="bi bi-exclamation-circle me-1"></i> Stok Terbatas
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 border border-success-subtle">
-                                                <i class="bi bi-check-circle me-1"></i> Tersedia
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <div class="col-12 text-center py-5">
-                                <i class="bi bi-box-seam text-muted opacity-50 mb-3 d-block" style="font-size: 3rem;"></i>
-                                <p class="text-muted mb-0 fw-bold">Tidak ada stok bibit dari Hibah yang tersedia saat ini.</p>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-            </div>
         </div>
       </div>
     </section>

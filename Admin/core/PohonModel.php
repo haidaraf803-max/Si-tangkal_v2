@@ -337,4 +337,40 @@ public function create(
     {
         return (int) $this->conn->query("SELECT COUNT(*) FROM pohon")->fetchColumn();
     }
+
+    /**
+     * Ambil data pohon untuk keperluan export CSV.
+     * Tabel `pohon` tidak memiliki kolom tanggal pencatatan, sehingga
+     * filter "tanggal" di sini menggunakan rentang TAHUN TANAM sebagai
+     * pendekatan terdekat. Kosongkan kedua parameter untuk export
+     * SELURUH data tanpa filter.
+     */
+    public function getForExport(string $tahunAwal = '', string $tahunAkhir = ''): array
+    {
+        $sql        = "SELECT * FROM pohon";
+        $conditions = [];
+        $params     = [];
+
+        if ($tahunAwal !== '' && $tahunAkhir !== '') {
+            $conditions[] = "tahun_tanam BETWEEN :tahun_awal AND :tahun_akhir";
+            $params[':tahun_awal']  = $tahunAwal;
+            $params[':tahun_akhir'] = $tahunAkhir;
+        } elseif ($tahunAwal !== '') {
+            $conditions[] = "tahun_tanam >= :tahun_awal";
+            $params[':tahun_awal'] = $tahunAwal;
+        } elseif ($tahunAkhir !== '') {
+            $conditions[] = "tahun_tanam <= :tahun_akhir";
+            $params[':tahun_akhir'] = $tahunAkhir;
+        }
+
+        if (!empty($conditions)) {
+            $sql .= " WHERE " . implode(' AND ', $conditions);
+        }
+
+        $sql .= " ORDER BY id DESC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

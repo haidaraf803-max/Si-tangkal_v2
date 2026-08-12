@@ -67,7 +67,7 @@ class MonitoringModel
         $stmt = $this->conn->prepare(
             "SELECT m.*,
                     p.nama_lokal, p.nama_latin, p.family, p.nama_jalan, p.kelurahan, p.kecamatan,
-                    p.kesehatan AS kesehatan_pohon_saat_ini, p.foto AS foto_pohon,
+                    p.kesehatan AS kesehatan_pohon_saat_ini, p.umur_pohon, p.foto AS foto_pohon,
                     u.Name AS petugas_name, u.Username AS petugas_username
              FROM monitoring m
              LEFT JOIN pohon p ON p.id = m.pohon_id
@@ -134,6 +134,27 @@ class MonitoringModel
     }
 
     /**
+     * Sinkronkan `pohon.umur_pohon` dengan umur yang diisi lewat form
+     * monitoring. Sama seperti syncPohonKesehatan() di atas: `umur_pohon`
+     * adalah kolom milik tabel `pohon`, bukan `monitoring`, jadi harus
+     * ditulis ke sana supaya langsung tampil di data pohon.
+     */
+    private function syncPohonUmur(int $pohon_id, ?string $umur_pohon): void
+    {
+        if ($umur_pohon === null || $umur_pohon === '') {
+            return;
+        }
+
+        $stmt = $this->conn->prepare(
+            "UPDATE pohon SET umur_pohon = :umur_pohon WHERE id = :pohon_id"
+        );
+        $stmt->execute([
+            ':umur_pohon' => $umur_pohon,
+            ':pohon_id'   => $pohon_id,
+        ]);
+    }
+
+    /**
      * Tambah data monitoring baru + upload media (boleh lebih dari satu file).
      *
      * @param array $files Struktur asli dari $_FILES['files'] (boleh single atau multiple)
@@ -182,6 +203,7 @@ class MonitoringModel
             $monitoringId = (int) $this->conn->lastInsertId();
 
             $this->syncPohonKesehatan($pohon_id, $kesehatan_monitoring);
+            $this->syncPohonUmur($pohon_id, $detail['umur_pohon'] ?? null);
 
             $this->uploadMedia($monitoringId, $files);
 
@@ -249,6 +271,7 @@ class MonitoringModel
             ]);
 
             $this->syncPohonKesehatan($pohon_id, $kesehatan_monitoring);
+            $this->syncPohonUmur($pohon_id, $detail['umur_pohon'] ?? null);
 
             if (!empty($deleteMediaIds)) {
                 $this->deleteMediaItems($id, $deleteMediaIds);
@@ -337,6 +360,46 @@ class MonitoringModel
         $stmt = $this->conn->prepare("SELECT COUNT(*) FROM monitoring WHERE kesehatan_monitoring = ?");
         $stmt->execute([$kesehatan]);
         return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Ambil data monitoring (+ info pohon & petugas) untuk keperluan export CSV.
+     * Filter berdasarkan rentang tanggal_monitoring (format Y-m-d).
+     * Kosongkan kedua parameter untuk export SELURUH data tanpa filter.
+     */
+    public function getForExport(string $tglAwal = '', string $tglAkhir = ''): array
+    {
+        $sql = "SELECT m.*,
+                       p.nama_lokal, p.nama_latin, p.nama_jalan, p.kelurahan, p.kecamatan,
+                       u.Name AS petugas_name, u.Username AS petugas_username
+                FROM monitoring m
+                LEFT JOIN pohon p ON p.id = m.pohon_id
+                LEFT JOIN t_users u ON u.UserId = m.user_id";
+
+        $conditions = [];
+        $params     = [];
+
+        if ($tglAwal !== '' && $tglAkhir !== '') {
+            $conditions[] = "DATE(m.tanggal_monitoring) BETWEEN :tgl_awal AND :tgl_akhir";
+            $params[':tgl_awal']  = $tglAwal;
+            $params[':tgl_akhir'] = $tglAkhir;
+        } elseif ($tglAwal !== '') {
+            $conditions[] = "DATE(m.tanggal_monitoring) >= :tgl_awal";
+            $params[':tgl_awal'] = $tglAwal;
+        } elseif ($tglAkhir !== '') {
+            $conditions[] = "DATE(m.tanggal_monitoring) <= :tgl_akhir";
+            $params[':tgl_akhir'] = $tglAkhir;
+        }
+
+        if (!empty($conditions)) {
+            $sql .= " WHERE " . implode(' AND ', $conditions);
+        }
+
+        $sql .= " ORDER BY m.tanggal_monitoring DESC, m.id DESC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**

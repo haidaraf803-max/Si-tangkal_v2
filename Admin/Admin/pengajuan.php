@@ -66,9 +66,9 @@ require_once 'layouts/sidebar.php';
         <p class="text-muted mb-0" style="font-size:0.8rem;">Kelola semua data pengajuan penanganan pohon</p>
     </div>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalExportPengajuan">
+        <a class="btn btn-outline-success" href="export_pengajuan.php<?= $keyword !== '' ? '?cari=' . urlencode($keyword) : '' ?>" target="_blank">
             <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-        </button>
+        </a>
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTambah">
             <i class="bi bi-plus-lg me-1"></i> Tambah Pengajuan
         </button>
@@ -202,63 +202,6 @@ require_once 'layouts/sidebar.php';
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success">
                         <i class="bi bi-save me-1"></i> Simpan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- ======= MODAL: EXPORT CSV DATA PENGAJUAN ======= -->
-<div class="modal fade" id="modalExportPengajuan" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="GET" action="export_pengajuan.php" target="_blank">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Data Pengajuan (CSV)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <label class="form-label fw-semibold">Pilihan Data</label>
-
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="mode" id="exportPengajuanAll" value="all" checked
-                               onchange="document.getElementById('pengajuanRangeFields').style.display='none';">
-                        <label class="form-check-label" for="exportPengajuanAll">
-                            Export Seluruh Data Pengajuan
-                        </label>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="radio" name="mode" id="exportPengajuanRange" value="range"
-                               onchange="document.getElementById('pengajuanRangeFields').style.display='flex';">
-                        <label class="form-check-label" for="exportPengajuanRange">
-                            Export Berdasarkan Tanggal Disposisi Surat
-                        </label>
-                    </div>
-
-                    <div id="pengajuanRangeFields" class="row g-2" style="display:none;">
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_awal">Dari Tanggal</label>
-                            <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_akhir">Sampai Tanggal</label>
-                            <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text">
-                                Kosongkan salah satu jika ingin membatasi hanya dari/sampai tanggal tertentu saja.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer" style="border-top:1px solid var(--border-color);">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-download me-1"></i> Export CSV
                     </button>
                 </div>
             </form>

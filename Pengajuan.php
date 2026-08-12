@@ -3,10 +3,16 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/Admin/core/PengajuanModel.php';
 
 $pengajuan = new PengajuanModel($config);
-$status_action = null; 
+$status_action = null;
 
 /* ======================= PROSES INSERT ======================= */
 if (isset($_POST['simpan'])) {
+    // Input pemangkasan/penebangan pohon WAJIB login terlebih dahulu.
+    if (!Auth::isLoggedIn()) {
+        header('Location: login.php?redirect=' . urlencode('Pengajuan.php'));
+        exit;
+    }
+
     $namaFileBaru = '';
     $status_action = null;
 
@@ -328,7 +334,8 @@ require_once __DIR__ . '/includes/site-header.php';
             <i class="bi bi-file-earmark-plus"></i>
           </div>
           <h5 class="fw-bold mb-4" style="color:#0f172a;">Buat Pengajuan Baru</h5>
-          
+
+          <?php if (Auth::isLoggedIn()): ?>
           <form method="POST" enctype="multipart/form-data">
             <div class="form-floating mb-3">
               <input type="text" name="no_surat" class="form-control" id="no_surat" placeholder="001/DLH/2026" required>
@@ -360,6 +367,17 @@ require_once __DIR__ . '/includes/site-header.php';
               <i class="bi bi-send me-2"></i>Kirim Pengajuan
             </button>
           </form>
+          <?php else: ?>
+          <div class="text-center py-3">
+            <i class="bi bi-lock text-muted mb-3 d-block" style="font-size: 2.5rem;"></i>
+            <p class="text-muted mb-4" style="font-size:0.9rem;">
+              Anda harus <strong>login</strong> terlebih dahulu untuk dapat mengajukan permohonan pemangkasan atau penebangan pohon.
+            </p>
+            <a href="login.php?redirect=<?= urlencode('Pengajuan.php') ?>" class="btn btn-submit w-100">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Login untuk Mengajukan
+            </a>
+          </div>
+          <?php endif; ?>
         </div>
       </div>
 

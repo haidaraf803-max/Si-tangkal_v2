@@ -237,6 +237,53 @@
     border-radius: 50%;
 }
 
+/* ---------- Pilihan Basemap (jenis peta dasar) ---------- */
+.basemap-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 6px 2px 8px;
+}
+.basemap-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+.basemap-option input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.basemap-thumb {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-fast);
+}
+.basemap-thumb-osm { background: linear-gradient(135deg, #eef2e0 0%, #cfe0b8 55%, #a9c98f 100%); }
+.basemap-thumb-satellite { background: linear-gradient(135deg, #1f3d2b 0%, #3c5a34 50%, #7a6a43 100%); }
+.basemap-thumb-light { background: linear-gradient(135deg, #fdfdfb 0%, #f2f0ea 55%, #e4e1d8 100%); }
+.basemap-thumb-dark { background: linear-gradient(135deg, #1a1c22 0%, #2a2d36 55%, #3a3e4a 100%); }
+
+.basemap-option input:checked + .basemap-thumb {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.25);
+}
+.basemap-option:hover .basemap-thumb {
+    transform: translateY(-1px);
+}
+.basemap-label {
+    font-size: 11px;
+    color: var(--color-gray-600);
+    font-weight: 500;
+    text-align: center;
+}
+
 /* Toggle switch */
 .switch {
     position: relative;

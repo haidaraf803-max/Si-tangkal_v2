@@ -87,6 +87,7 @@ $pageTitle = $tree ? $tree['name'] : 'Pohon Tidak Ditemukan';
                     <div class="detail-meta-item"><b>Famili</b><?= htmlspecialchars($tree['family'] ?: '-') ?></div>
                     <div class="detail-meta-item"><b>Habitus</b><?= htmlspecialchars($tree['habitus'] ?: '-') ?></div>
                     <div class="detail-meta-item"><b>Tahun Tanam</b><?= $tree['tahun_tanam'] ?? '-' ?></div>
+                    <div class="detail-meta-item"><b>Umur Pohon</b><?= !empty($tree['umur_pohon']) ? htmlspecialchars($tree['umur_pohon']) . ' tahun' : '-' ?></div>
                     <div class="detail-meta-item"><b>ID Pohon</b>#<?= $tree['id'] ?></div>
                 </div>
 
@@ -143,6 +144,11 @@ $pageTitle = $tree ? $tree['name'] : 'Pohon Tidak Ditemukan';
                     <option value="Kurang Sehat">Kurang Sehat</option>
                     <option value="Sakit">Sakit</option>
                 </select>
+            </div>
+
+            <div class="form-group">
+                <label for="mon-umur">Umur Pohon (tahun)</label>
+                <input type="text" id="mon-umur" name="umur_pohon" maxlength="4" inputmode="numeric" placeholder="mis. 5 (opsional)">
             </div>
 
             <div class="form-group">

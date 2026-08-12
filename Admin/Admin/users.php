@@ -104,9 +104,9 @@ require_once 'layouts/sidebar.php';
         <p class="text-muted mb-0" style="font-size:0.8rem;">Kelola akun pengguna aplikasi Si-TANGKAL (t_users)</p>
     </div>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalExportUsers">
+        <a class="btn btn-outline-success" href="export_users.php<?= $keyword !== '' ? '?cari=' . urlencode($keyword) : '' ?>" target="_blank">
             <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-        </button>
+        </a>
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTambahUser">
             <i class="bi bi-person-plus me-1"></i> Tambah Pengguna
         </button>
@@ -337,63 +337,6 @@ require_once 'layouts/sidebar.php';
                 <button type="submit" name="add_user" class="btn btn-success">Simpan Pengguna</button>
             </div>
         </form>
-    </div>
-</div>
-
-<!-- ======= MODAL: EXPORT CSV DATA USERS ======= -->
-<div class="modal fade" id="modalExportUsers" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="GET" action="export_users.php" target="_blank">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Data Pengguna (CSV)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <label class="form-label fw-semibold">Pilihan Data</label>
-
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="mode" id="exportUsersAll" value="all" checked
-                               onchange="document.getElementById('usersRangeFields').style.display='none';">
-                        <label class="form-check-label" for="exportUsersAll">
-                            Export Seluruh Data Pengguna
-                        </label>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="radio" name="mode" id="exportUsersRange" value="range"
-                               onchange="document.getElementById('usersRangeFields').style.display='flex';">
-                        <label class="form-check-label" for="exportUsersRange">
-                            Export Berdasarkan Tanggal Dibuat
-                        </label>
-                    </div>
-
-                    <div id="usersRangeFields" class="row g-2" style="display:none;">
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_awal">Dari Tanggal</label>
-                            <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_akhir">Sampai Tanggal</label>
-                            <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text">
-                                Kosongkan salah satu jika ingin membatasi hanya dari/sampai tanggal tertentu saja.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-download me-1"></i> Export CSV
-                    </button>
-                </div>
-            </form>
-        </div>
     </div>
 </div>
 

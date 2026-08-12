@@ -1,22 +1,20 @@
 <?php
-// 1. Set headers for a JSON REST API and allow cross-origin requests (CORS)
+// 1. Muat konfigurasi tunggal aplikasi (koneksi DB, session, dsb).
+//    Sebelumnya file ini bikin koneksi PDO sendiri dengan kredensial
+//    ter-hardcode (host beda port, password beda) — jadi kalau kredensial
+//    DB di config.php diubah, endpoint ini bisa gagal connect atau nyambung
+//    ke DB yang salah tanpa disadari. Sekarang disamakan dengan pola yang
+//    sudah dipakai di api/trees.php: 1 sumber koneksi untuk semua endpoint.
+require_once __DIR__ . '/config.php';
+
+// 2. Set headers for a JSON REST API and allow cross-origin requests (CORS)
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET");
 
-// 2. Database configuration
-$host     = "localhost:8050";
-$dbname   = "db_sitangkal";
-$username = "root";
-$password = "root";
-
 try {
-    // Connect to MySQL using PDO
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-    ]);
-    
+    // Koneksi PDO singleton dari config.php (sama dengan seluruh aplikasi)
+    $pdo = getPDO();
     // 3. Query your spatial data table
     // Replace 'locations' with your table name, and ensure you select your latitude and longitude columns
     $stmt = $pdo->query("SELECT *, koordinat_x as latitude, koordinat_y as longitude FROM pohon");
