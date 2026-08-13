@@ -18,7 +18,7 @@ function setActiveFab(id) {
 }
 
 function openHelp() {
-    alert('Si-TANGKAL membantu Anda menjelajahi data pohon kota di seluruh Kota Cimahi.\n\n- Gunakan ikon Layer untuk menampilkan/menyembunyikan data\n- Gunakan ikon Filter untuk menyaring jenis pohon\n- Klik marker pohon di peta untuk melihat detail');
+    alert('Si-TANGKAL membantu Anda menjelajahi data pohon kota di seluruh Kota Cimahi.\n\n- Gunakan ikon Layer untuk menampilkan/menyembunyikan data dan memilih kondisi kesehatan\n- Klik angka cluster untuk memperbesar peta\n- Klik point pohon untuk melihat detail');
 }
 
 function openStatistics() {
@@ -41,14 +41,9 @@ function applyFilter() {
     const statusKel = statusKelValue ? [statusKelValue] : [];
 
     // Filter digabung dengan pencarian (q) yang mungkin sedang aktif di navbar.
-    refreshTreeLayer({ kesehatan, status_kel: statusKel }).then(() => {
-        // Pastikan layer database pohon aktif supaya hasil filter terlihat.
-        if (!map.hasLayer(layerGroups.dbPohon)) {
-            layerGroups.dbPohon.addTo(map);
-            const cb = document.getElementById('layer-db-pohon');
-            if (cb) cb.checked = true;
-        }
-    });
+    // refreshTreeLayer juga menyamakan pilihan ini dengan tiga switch pada
+    // panel Layer Peta.
+    refreshTreeLayer({ kesehatan, status_kel: statusKel });
 
     closeFilterModal();
 }
@@ -63,13 +58,10 @@ function resetFilter() {
     const searchInput = document.getElementById('navbar-search-input');
     if (searchInput) searchInput.value = '';
 
-    refreshTreeLayer({ q: '', kesehatan: [], status_kel: [] }).then(() => {
-        if (!map.hasLayer(layerGroups.dbPohon)) {
-            layerGroups.dbPohon.addTo(map);
-            const cb = document.getElementById('layer-db-pohon');
-            if (cb) cb.checked = true;
-        }
-    });
+    const allKesehatan = (typeof ALL_TREE_HEALTH_STATUSES !== 'undefined')
+        ? [...ALL_TREE_HEALTH_STATUSES]
+        : ['Sehat', 'Kurang Sehat', 'Sakit'];
+    refreshTreeLayer({ q: '', kesehatan: allKesehatan, status_kel: [] });
 }
 
 // Expand/collapse a layer group section (e.g. "Pohon GeoServer", "Pohon Database")

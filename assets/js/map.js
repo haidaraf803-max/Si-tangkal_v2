@@ -64,13 +64,35 @@ function bindBasemapToggle() {
     return initial;
 }
 
+const TREE_HEALTH = Object.freeze({
+    'Sehat': { key: 'sehat', color: '#1e8a4c' },
+    'Kurang Sehat': { key: 'kurang-sehat', color: '#d97706' },
+    'Sakit': { key: 'sakit', color: '#d9534f' },
+});
+const ALL_TREE_HEALTH_STATUSES = Object.freeze(Object.keys(TREE_HEALTH));
+
+// Mulai zoom 16 seluruh pohon ditampilkan sebagai point feature dengan
+// koordinat mentah dari database. Di bawahnya pohon yang saling berdekatan
+// diringkas menjadi cluster berisi angka.
+const TREE_POINT_ZOOM = 16;
+const TREE_CLUSTER_GRID_SIZE = 72;
+
+// Semua point pohon menggunakan satu Canvas renderer bersama. Dengan ini
+// Leaflet tidak membuat ribuan node HTML/gambar marker ketika pengguna zoom in.
+const treePointRenderer = L.canvas({ padding: 0.5 });
+let treeSourceTrees = [];
+let treeDataLoaded = false;
+let treeFetchSequence = 0;
+const treeById = new Map();
+
 const layerGroups = {
-    // Pohon — Database (marker, klikable, dari tabel `pohon` lewat api/trees.php)
+    // Pohon — Database (point vector / cluster, klikable, dari api/trees.php)
     dbPohon: L.layerGroup(),
     // Pohon — GeoServer (citra WMS, bukan dari database lokal)
     wmsPohon: L.layerGroup(),
-    wmsPohonRw: L.layerGroup(),
-    wmsPohonKahati: L.layerGroup(),
+    // Data GeoServer RW/Kahati dirender sebagai point vector, bukan WMS/PNG.
+    pohonRw: L.layerGroup(),
+    pohonKahati: L.layerGroup(),
     green: L.layerGroup(),
     villages: L.layerGroup(),
     districts: L.layerGroup(),
@@ -80,62 +102,163 @@ const layerGroups = {
     wmsPucuk : L.layerGroup(),
 };
 
-// Ikon marker pohon berbentuk "pin lokasi" (bulat + lancip di bawah), digambar
-// murni pakai CSS/emoji — tidak memuat file gambar, jadi rendering tetap cepat
-// walau markernya banyak.
-const TREE_SYMBOL = {
-    sehat: '🌳',
-    'kurang-sehat': '🥀',
-    sakit: '🍂',
+// Kedua sumber berikut berasal dari GeoServer WFS, bukan dari database lokal.
+// Data baru diambil ketika toggle layer diaktifkan supaya halaman awal ringan.
+const referenceTreeSources = {
+    rw: {
+        key: 'rw',
+        label: 'Pohon RW',
+        clusterKind: 'rw',
+        color: '#1e8a4c',
+        layer: layerGroups.pohonRw,
+        load: () => DataService.getPohonRWPoints(),
+        trees: [],
+        loaded: false,
+        loading: null,
+        visible: false,
+    },
+    kahati: {
+        key: 'kahati',
+        label: 'Pohon Kahati',
+        clusterKind: 'kahati',
+        color: '#1d7d8f',
+        layer: layerGroups.pohonKahati,
+        load: () => DataService.getPohonKahatiPoints(),
+        trees: [],
+        loaded: false,
+        loading: null,
+        visible: false,
+    },
 };
-
-// Cache instance divIcon supaya tidak dibuat ulang setiap kali marker dirender.
-const _treeIconCache = {};
-
-function treeDivIcon(kesehatan) {
-    const k = (kesehatan || '').toLowerCase();
-    let cls = 'sehat';
-    if (k === 'kurang sehat') {
-        cls = 'kurang-sehat';
-    } else if (k === 'sakit') {
-        cls = 'sakit';
-    }
-
-    if (!_treeIconCache[cls]) {
-        _treeIconCache[cls] = L.divIcon({
-            html: `
-                <div class="tree-pin ${cls}">
-                    <span class="tree-pin-symbol">${TREE_SYMBOL[cls]}</span>
-                </div>
-            `,
-            className: '',
-            iconSize: [30, 40],
-            iconAnchor: [15, 40],
-            popupAnchor: [0, -38],
-        });
-    }
-    return _treeIconCache[cls];
-}
 
 // ---------------- Pencarian & filter pohon (live, tanpa reload) ----------------
 // Menyimpan kondisi pencarian/filter yang sedang aktif supaya search dan
 // filter bisa digabung (mis. cari "jambu" + filter kesehatan "Sehat").
 const treeQueryState = {
     q: '',
-    kesehatan: [],
+    kesehatan: [...ALL_TREE_HEALTH_STATUSES],
     status_kel: [],
 };
 
-async function refreshTreeLayer(overrides) {
-    Object.assign(treeQueryState, overrides || {});
-    try {
-        const trees = await DataService.getTrees(treeQueryState);
-        renderTrees(trees);
-        return trees;
-    } catch (e) {
-        console.error('Gagal memuat data pohon', e);
-        return [];
+function normalizeTreeHealth(value) {
+    const health = String(value || '').trim().toLowerCase();
+    if (health === 'kurang sehat') return 'Kurang Sehat';
+    if (health === 'sakit') return 'Sakit';
+    return 'Sehat';
+}
+
+function normalizeTreeHealthSelection(values) {
+    const selected = Array.isArray(values) ? values : [];
+    return ALL_TREE_HEALTH_STATUSES.filter((status) => selected.includes(status));
+}
+
+function hasValidTreeCoordinates(tree) {
+    const lat = Number(tree?.lat);
+    const lng = Number(tree?.lng);
+    return Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
+}
+
+function getVisibleTrees() {
+    const selectedHealth = new Set(treeQueryState.kesehatan);
+    return treeSourceTrees.filter((tree) => selectedHealth.has(normalizeTreeHealth(tree.kesehatan)));
+}
+
+function syncTreeHealthControls() {
+    const selectedHealth = new Set(treeQueryState.kesehatan);
+
+    document.querySelectorAll('[data-tree-health]').forEach((input) => {
+        input.checked = selectedHealth.has(input.dataset.treeHealth);
+    });
+    document.querySelectorAll('.filter-kesehatan').forEach((input) => {
+        input.checked = selectedHealth.has(input.value);
+    });
+
+    const masterToggle = document.getElementById('layer-db-pohon');
+    if (masterToggle) {
+        masterToggle.checked = selectedHealth.size > 0;
+        masterToggle.indeterminate = selectedHealth.size > 0 && selectedHealth.size < ALL_TREE_HEALTH_STATUSES.length;
     }
+}
+
+function syncTreeLayerVisibility() {
+    if (!map) return;
+    if (treeQueryState.kesehatan.length > 0) {
+        layerGroups.dbPohon.addTo(map);
+    } else {
+        map.removeLayer(layerGroups.dbPohon);
+    }
+}
+
+function setTreeHealthSelection(values, options) {
+    const shouldRender = !options || options.render !== false;
+    treeQueryState.kesehatan = normalizeTreeHealthSelection(values);
+    syncTreeHealthControls();
+    syncTreeLayerVisibility();
+    if (shouldRender) refreshTreePointPresentation();
+}
+
+async function refreshTreeLayer(overrides) {
+    const next = overrides || {};
+    const healthChanged = Object.prototype.hasOwnProperty.call(next, 'kesehatan');
+    const sourceFilterChanged = Object.prototype.hasOwnProperty.call(next, 'q')
+        || Object.prototype.hasOwnProperty.call(next, 'status_kel');
+
+    if (Object.prototype.hasOwnProperty.call(next, 'q')) treeQueryState.q = next.q || '';
+    if (Object.prototype.hasOwnProperty.call(next, 'status_kel')) treeQueryState.status_kel = next.status_kel || [];
+    if (healthChanged) setTreeHealthSelection(next.kesehatan, { render: false });
+
+    if (!treeDataLoaded || sourceFilterChanged) {
+        const requestId = ++treeFetchSequence;
+        try {
+            // Kesehatan difilter di browser agar switch status bisa merespons
+            // tanpa request ulang dan tanpa memuat ulang seluruh peta.
+            const trees = await DataService.getTrees({
+                q: treeQueryState.q,
+                kesehatan: [],
+                status_kel: treeQueryState.status_kel,
+            });
+            if (requestId !== treeFetchSequence) return getVisibleTrees();
+
+            renderTrees(trees);
+            treeDataLoaded = true;
+        } catch (e) {
+            console.error('Gagal memuat data pohon', e);
+            return [];
+        }
+    } else {
+        refreshTreePointPresentation();
+    }
+
+    syncTreeLayerVisibility();
+    return getVisibleTrees();
+}
+// ---------------- Zoom control positioning ----------------
+const ZOOM_HELP_GAP = 11;
+
+function positionZoomBelowHelp() {
+    const helpButton = document.getElementById('fab-help');
+    const zoomCorner = document.querySelector('#map .leaflet-top.leaflet-left');
+    const zoomControl = document.querySelector('#map .leaflet-control-zoom');
+
+    if (!map || !helpButton || !zoomCorner || !zoomControl) return;
+
+    const helpBox = helpButton.getBoundingClientRect();
+    const mapBox = map.getContainer().getBoundingClientRect();
+    const zoomStyle = window.getComputedStyle(zoomControl);
+
+    const marginTop = parseFloat(zoomStyle.marginTop) || 0;
+    const marginLeft = parseFloat(zoomStyle.marginLeft) || 0;
+
+    zoomCorner.style.top =
+        `${helpBox.bottom - mapBox.top + ZOOM_HELP_GAP - marginTop}px`;
+
+    const helpCenterX = helpBox.left + (helpBox.width / 2);
+    const zoomLeftX = helpCenterX - mapBox.left - (zoomControl.offsetWidth / 2);
+
+    zoomCorner.style.left = `${zoomLeftX - marginLeft}px`;
+
+    zoomCorner.style.right = 'auto';
+    zoomCorner.style.bottom = 'auto';
 }
 
 function initMap() {
@@ -152,6 +275,10 @@ function initMap() {
     const initialBasemap = bindBasemapToggle();
     setBasemap(initialBasemap);
 
+    // Panning tidak memicu render ulang. Susunan cluster hanya berubah saat
+    // level zoom berubah, sehingga gerakan peta tetap terasa ringan.
+    map.on('zoomend', refreshAllTreePointPresentations);
+
     // Add default-on layers
     // layerGroups.dbPohon.addTo(map);
     // layerGroups.green.addTo(map);
@@ -160,36 +287,26 @@ function initMap() {
     // // layerGroups.labels.addTo(map);
     // layerGroups.wmsFotoudara.addTo(map);
   
-    // WMS tree layers (wmsPohon / wmsPohonRw / wmsPohonKahati) and districts are
-    // off by default — they're extra GeoServer overlays the user can opt into.
+    // WMS pohon umum dan distrik dimatikan secara default. Pohon RW/Kahati
+    // akan diambil sebagai point WFS hanya saat toggle-nya diaktifkan.
 
    loadAllLayers().then(() => {
         focusTreeFromUrl();
     });
     bindLayerToggles();
+    requestAnimationFrame(positionZoomBelowHelp);
+window.addEventListener('resize', positionZoomBelowHelp);
 }
 
 async function loadAllLayers() {
     // Muat semua data pohon dari database (tanpa filter) supaya langsung tampil semua.
-    await refreshTreeLayer({ q: '', kesehatan: [], status_kel: [] });
+    await refreshTreeLayer({ q: '', kesehatan: [...ALL_TREE_HEALTH_STATUSES], status_kel: [] });
 
     try {
         const pohonWms = await DataService.getPohonWMS();
         layerGroups.wmsPohon.clearLayers();
         layerGroups.wmsPohon.addLayer(pohonWms);
     } catch (e) { console.error('Pohon (WMS) load failed', e); }
-
-    try {
-        const pohonRwWms = await DataService.getPohonRWWMS();
-        layerGroups.wmsPohonRw.clearLayers();
-        layerGroups.wmsPohonRw.addLayer(pohonRwWms);
-    } catch (e) { console.error('Pohon RW (WMS) load failed', e); }
-
-    try {
-        const pohonKahatiWms = await DataService.getPohonKahatiWMS();
-        layerGroups.wmsPohonKahati.clearLayers();
-        layerGroups.wmsPohonKahati.addLayer(pohonKahatiWms);
-    } catch (e) { console.error('Pohon Kahati (WMS) load failed', e); }
 
    try {
         const FotoudarWms = await DataService.getFotoudara();
@@ -231,56 +348,285 @@ async function loadAllLayers() {
 }
 
 function renderTrees(trees) {
-
-    layerGroups.dbPohon.clearLayers();
-
-    trees.forEach((tree) => {
-
-        if (!tree.lat || !tree.lng) return;
-
-        const marker = L.marker(
-            [tree.lat, tree.lng],
-            {
-                icon: treeDivIcon(tree.kesehatan)
-            }
-        );
-
-        marker.treeData = tree; // simpan data pohon di marker, dipakai focusTreeFromUrl()
-
-        marker.on("click", () => {
-            showTreePopup(tree, marker);
-        });
-
-        layerGroups.dbPohon.addLayer(marker);
-
-    });
-
+    treeSourceTrees = Array.isArray(trees) ? trees.filter(hasValidTreeCoordinates) : [];
+    treeById.clear();
+    treeSourceTrees.forEach((tree) => treeById.set(Number(tree.id), tree));
+    refreshTreePointPresentation();
 }
 
-// function renderTrees(trees) {
+function treePointOptions(tree) {
+    const health = normalizeTreeHealth(tree.kesehatan);
+    const style = TREE_HEALTH[health] || TREE_HEALTH.Sehat;
+    return {
+        renderer: treePointRenderer,
+        radius: 5.5,
+        color: '#ffffff',
+        weight: 1.5,
+        opacity: 1,
+        fillColor: style.color,
+        fillOpacity: 0.95,
+        interactive: true,
+    };
+}
 
-//     layerGroups.dbPohon.clearLayers();
+function addTreePoint(tree) {
+    const point = L.circleMarker([tree.lat, tree.lng], treePointOptions(tree));
+    point.treeData = tree;
+    point.on('click', () => showTreePopup(tree, point));
+    layerGroups.dbPohon.addLayer(point);
+}
 
-//     trees.forEach((tree) => {
+function clusterTrees(trees) {
+    const cells = new Map();
+    const zoom = map.getZoom();
 
-//         if (!tree.lat || !tree.lng) return;
+    trees.forEach((tree) => {
+        const pixel = map.project([tree.lat, tree.lng], zoom);
+        const cellX = Math.floor(pixel.x / TREE_CLUSTER_GRID_SIZE);
+        const cellY = Math.floor(pixel.y / TREE_CLUSTER_GRID_SIZE);
+        const cellKey = `${cellX}:${cellY}`;
 
-//         const marker = L.marker(
-//             [tree.lat, tree.lng],
-//             {
-//                 icon: treeDivIcon(tree.kesehatan)
-//             }
-//         );
+        if (!cells.has(cellKey)) {
+            cells.set(cellKey, { trees: [], latTotal: 0, lngTotal: 0 });
+        }
 
-//         marker.on("click", () => {
-//             showTreePopup(tree, marker);
-//         });
+        const cell = cells.get(cellKey);
+        cell.trees.push(tree);
+        cell.latTotal += Number(tree.lat);
+        cell.lngTotal += Number(tree.lng);
+    });
 
-//         layerGroups.dbPohon.addLayer(marker);
+    return Array.from(cells.values()).map((cell) => ({
+        ...cell,
+        lat: cell.latTotal / cell.trees.length,
+        lng: cell.lngTotal / cell.trees.length,
+    }));
+}
 
-//     });
+function getClusterKind(trees) {
+    const counts = { Sehat: 0, 'Kurang Sehat': 0, Sakit: 0 };
+    trees.forEach((tree) => { counts[normalizeTreeHealth(tree.kesehatan)] += 1; });
 
-// }
+    const activeStatuses = ALL_TREE_HEALTH_STATUSES.filter((status) => counts[status] > 0);
+    if (activeStatuses.length > 1) return 'campuran';
+
+    return (TREE_HEALTH[activeStatuses[0] || 'Sehat'] || TREE_HEALTH.Sehat).key;
+}
+
+function formatClusterCount(count) {
+    return count > 999 ? '999+' : String(count);
+}
+
+function zoomToTreeCluster(cluster) {
+    const bounds = L.latLngBounds(cluster.trees.map((tree) => [tree.lat, tree.lng]));
+    if (!bounds.isValid()) return;
+
+    const southWest = bounds.getSouthWest();
+    const northEast = bounds.getNorthEast();
+    const targetZoom = Math.min(TREE_POINT_ZOOM, map.getZoom() + 3);
+
+    if (southWest.equals(northEast)) {
+        map.setView([cluster.lat, cluster.lng], targetZoom);
+        return;
+    }
+
+    map.fitBounds(bounds, { padding: [54, 54], maxZoom: TREE_POINT_ZOOM });
+}
+
+function addTreeCluster(cluster) {
+    const count = cluster.trees.length;
+    const kind = getClusterKind(cluster.trees);
+    const icon = L.divIcon({
+        html: `<div class="tree-cluster tree-cluster--${kind}" aria-label="${count} pohon"><span>${formatClusterCount(count)}</span></div>`,
+        className: 'tree-cluster-marker',
+        iconSize: [46, 46],
+        iconAnchor: [23, 23],
+    });
+    const marker = L.marker([cluster.lat, cluster.lng], {
+        icon,
+        keyboard: true,
+        title: `${count} pohon — klik untuk memperbesar`,
+    });
+
+    marker.on('click', () => zoomToTreeCluster(cluster));
+    layerGroups.dbPohon.addLayer(marker);
+}
+
+function refreshTreePointPresentation() {
+    if (!map) return;
+
+    layerGroups.dbPohon.clearLayers();
+    const visibleTrees = getVisibleTrees();
+    if (!visibleTrees.length) return;
+
+    // Pada zoom detail, setiap pohon adalah L.circleMarker (point vector Canvas).
+    if (map.getZoom() >= TREE_POINT_ZOOM) {
+        visibleTrees.forEach(addTreePoint);
+        return;
+    }
+
+    clusterTrees(visibleTrees).forEach((cluster) => {
+        if (cluster.trees.length === 1) {
+            addTreePoint(cluster.trees[0]);
+        } else {
+            addTreeCluster(cluster);
+        }
+    });
+}
+
+function normalizeReferenceTreeFeatures(geojson, source) {
+    const features = Array.isArray(geojson?.features) ? geojson.features : [];
+
+    return features.map((feature, index) => {
+        const coordinates = feature?.geometry?.coordinates;
+        if (feature?.geometry?.type !== 'Point' || !Array.isArray(coordinates) || coordinates.length < 2) {
+            return null;
+        }
+
+        const properties = (feature?.properties && typeof feature.properties === 'object')
+            ? feature.properties
+            : {};
+        const rawId = properties.id ?? feature.id ?? index + 1;
+
+        return {
+            id: `${source.key}-${rawId}`,
+            sourceKey: source.key,
+            label: source.label,
+            lat: Number(coordinates[1]),
+            lng: Number(coordinates[0]),
+            properties,
+        };
+    }).filter(hasValidTreeCoordinates);
+}
+
+function escapeMapHtml(value) {
+    return String(value ?? '-').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    })[character]);
+}
+
+function showReferenceTreePopup(tree) {
+    const source = referenceTreeSources[tree.sourceKey];
+    if (!source) return;
+
+    const properties = tree.properties || {};
+    const fields = source.key === 'rw'
+        ? [
+            ['Nomor Pohon', properties.NO_POHON],
+            ['RW', properties.RW],
+        ]
+        : [
+            ['FID Pohon', properties.FID_POHON],
+            ['FID Taman', properties.FID_TAMAN],
+            ['Keterangan', properties.KET],
+        ];
+    const details = fields
+        .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
+        .map(([label, value]) => `<div><b>${escapeMapHtml(label)}:</b> ${escapeMapHtml(value)}</div>`)
+        .join('');
+
+    L.popup({ maxWidth: 280, offset: [0, -8] })
+        .setLatLng([tree.lat, tree.lng])
+        .setContent(`<div class="reference-tree-popup"><strong>${escapeMapHtml(tree.label)}</strong>${details ? `<div style="margin-top:6px; font-size:12px; line-height:1.55;">${details}</div>` : ''}</div>`)
+        .openOn(map);
+}
+
+function referenceTreePointOptions(source) {
+    return {
+        renderer: treePointRenderer,
+        radius: 5.5,
+        color: '#ffffff',
+        weight: 1.5,
+        opacity: 1,
+        fillColor: source.color,
+        fillOpacity: 0.95,
+        interactive: true,
+    };
+}
+
+function addReferenceTreePoint(source, tree) {
+    const point = L.circleMarker([tree.lat, tree.lng], referenceTreePointOptions(source));
+    point.on('click', () => showReferenceTreePopup(tree));
+    source.layer.addLayer(point);
+}
+
+function addReferenceTreeCluster(source, cluster) {
+    const count = cluster.trees.length;
+    const icon = L.divIcon({
+        html: `<div class="tree-cluster tree-cluster--${source.clusterKind}" aria-label="${count} ${source.label}"><span>${formatClusterCount(count)}</span></div>`,
+        className: 'tree-cluster-marker',
+        iconSize: [46, 46],
+        iconAnchor: [23, 23],
+    });
+    const marker = L.marker([cluster.lat, cluster.lng], {
+        icon,
+        keyboard: true,
+        title: `${count} ${source.label} — klik untuk memperbesar`,
+    });
+
+    marker.on('click', () => zoomToTreeCluster(cluster));
+    source.layer.addLayer(marker);
+}
+
+function refreshReferenceTreePointPresentation(source) {
+    if (!map || !source.loaded || !source.visible) return;
+
+    source.layer.clearLayers();
+    if (!source.trees.length) return;
+
+    if (map.getZoom() >= TREE_POINT_ZOOM) {
+        source.trees.forEach((tree) => addReferenceTreePoint(source, tree));
+        return;
+    }
+
+    clusterTrees(source.trees).forEach((cluster) => {
+        if (cluster.trees.length === 1) {
+            addReferenceTreePoint(source, cluster.trees[0]);
+        } else {
+            addReferenceTreeCluster(source, cluster);
+        }
+    });
+}
+
+function refreshAllTreePointPresentations() {
+    refreshTreePointPresentation();
+    Object.values(referenceTreeSources).forEach(refreshReferenceTreePointPresentation);
+}
+
+async function ensureReferenceTreeSource(sourceKey) {
+    const source = referenceTreeSources[sourceKey];
+    if (!source) return;
+
+    if (source.loaded) {
+        refreshReferenceTreePointPresentation(source);
+        return source.trees;
+    }
+
+    if (!source.loading) {
+        source.loading = source.load()
+            .then((geojson) => {
+                source.trees = normalizeReferenceTreeFeatures(geojson, source);
+                source.loaded = true;
+                refreshReferenceTreePointPresentation(source);
+                return source.trees;
+            })
+            .catch((error) => {
+                source.trees = [];
+                source.loaded = false;
+                console.error(`${source.label} WFS load failed`, error);
+                throw error;
+            })
+            .finally(() => {
+                source.loading = null;
+            });
+    }
+
+    return source.loading;
+}
 // function renderGreenSpaces(geojson) {
 //     const layer = L.geoJSON(geojson, {
 //         style: {
@@ -429,16 +775,70 @@ function closeTreePopup() {
 const defaultLayers = [
     'layer-fotoudara',
     'layer-green',
-    'layer-db-pohon'
 ];
+
+function bindTreeHealthLayerToggles() {
+    const masterToggle = document.getElementById('layer-db-pohon');
+    const healthToggles = Array.from(document.querySelectorAll('[data-tree-health]'));
+
+    if (!masterToggle || !healthToggles.length) {
+        syncTreeLayerVisibility();
+        return;
+    }
+
+    masterToggle.addEventListener('change', () => {
+        // Switch induk adalah jalan pintas untuk menampilkan/menyembunyikan
+        // seluruh tiga status kesehatan sekaligus.
+        setTreeHealthSelection(masterToggle.checked ? ALL_TREE_HEALTH_STATUSES : []);
+    });
+
+    healthToggles.forEach((toggle) => {
+        toggle.addEventListener('change', () => {
+            const selected = healthToggles
+                .filter((input) => input.checked)
+                .map((input) => input.dataset.treeHealth);
+            setTreeHealthSelection(selected);
+        });
+    });
+
+    syncTreeHealthControls();
+    syncTreeLayerVisibility();
+}
+
+function bindReferenceTreeLayerToggles() {
+    document.querySelectorAll('[data-reference-tree]').forEach((toggle) => {
+        toggle.addEventListener('change', async () => {
+            const source = referenceTreeSources[toggle.dataset.referenceTree];
+            if (!source) return;
+
+            if (!toggle.checked) {
+                source.visible = false;
+                map.removeLayer(source.layer);
+                return;
+            }
+
+            source.visible = true;
+            try {
+                await ensureReferenceTreeSource(source.key);
+
+                // Pengguna mungkin mematikan switch selama data WFS dimuat.
+                if (toggle.checked) {
+                    source.layer.addTo(map);
+                }
+            } catch (error) {
+                source.visible = false;
+                toggle.checked = false;
+                map.removeLayer(source.layer);
+            }
+        });
+    });
+}
+
 // ---------------- Layer toggle binding ----------------
 function bindLayerToggles() {
 
     const map_ = {
         'layer-wms-pohon': layerGroups.wmsPohon,
-        'layer-wms-pohon-rw': layerGroups.wmsPohonRw,
-        'layer-wms-pohon-kahati': layerGroups.wmsPohonKahati,
-        'layer-db-pohon': layerGroups.dbPohon,
         'layer-green': layerGroups.green,
         'layer-villages': layerGroups.villages,
         'layer-districts': layerGroups.districts,
@@ -469,6 +869,9 @@ function bindLayerToggles() {
         });
 
     });
+
+    bindTreeHealthLayerToggles();
+    bindReferenceTreeLayerToggles();
 }
 
 // My Location button
@@ -491,19 +894,17 @@ function locateMe() {
 // Dipanggil dari kotak pencarian navbar (lihat header.php) — tidak reload
 // halaman, hanya refetch data pohon lalu render ulang layer database.
 async function runTreeSearch(q) {
-    if (!layerGroups.dbPohon.getLayers || map === undefined) return;
+    if (map === undefined) return;
 
     const trees = await refreshTreeLayer({ q: q || '' });
 
-    // Pastikan layer database pohon aktif supaya hasil pencarian terlihat.
-    if (!map.hasLayer(layerGroups.dbPohon)) {
-        layerGroups.dbPohon.addTo(map);
-        const cb = document.getElementById('layer-db-pohon');
-        if (cb) cb.checked = true;
-    }
+    // Bila minimal satu kondisi kesehatan dipilih, layer dijaga tetap aktif.
+    // Jika semua kondisi dimatikan pengguna, hasil pencarian sengaja tetap
+    // disembunyikan sampai salah satu kondisi dinyalakan kembali.
+    syncTreeLayerVisibility();
 
     // Arahkan peta ke hasil pencarian bila ada.
-    const valid = trees.filter((t) => t.lat && t.lng);
+    const valid = trees.filter(hasValidTreeCoordinates);
     if (valid.length === 1) {
         map.setView([valid[0].lat, valid[0].lng], 17);
     } else if (valid.length > 1) {
@@ -518,23 +919,18 @@ function focusTreeFromUrl() {
     if (!treeId) return;
 
     const targetId = parseInt(treeId, 10);
-    let found = null;
+    const tree = treeById.get(targetId);
+    if (!tree) return;
 
-    layerGroups.dbPohon.eachLayer((marker) => {
-        if (marker.treeData && marker.treeData.id === targetId) {
-            found = marker;
-        }
-    });
-
-    if (found) {
-        if (!map.hasLayer(layerGroups.dbPohon)) {
-            layerGroups.dbPohon.addTo(map);
-            const cb = document.getElementById('layer-db-pohon');
-            if (cb) cb.checked = true;
-        }
-        map.setView(found.getLatLng(), 18);
-        found.fire('click');
+    // Link detail harus tetap dapat membuka pohon meski sebelumnya statusnya
+    // sedang tidak dipilih pada panel layer.
+    const health = normalizeTreeHealth(tree.kesehatan);
+    if (!treeQueryState.kesehatan.includes(health)) {
+        setTreeHealthSelection([...treeQueryState.kesehatan, health], { render: false });
     }
+
+    map.setView([tree.lat, tree.lng], TREE_POINT_ZOOM + 1);
+    showTreePopup(tree);
 }
 
 document.addEventListener('DOMContentLoaded', initMap);

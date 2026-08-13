@@ -108,6 +108,37 @@ define('GEOSERVER_BASE_URL', 'https://c-map.cimahikota.go.id/geoserver/ows');
 define('GEOSERVER_WORKSPACE', 'cimahi');
 
 // =======================================================
+// BASEMAP CONFIG (dipakai oleh maps.php + assets/js/map.js)
+// =======================================================
+define('DEFAULT_BASEMAP', 'osm');
+define('BASEMAP_CONFIG', [
+    'osm' => [
+        'url' => 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'attribution' => '&copy; OpenStreetMap contributors',
+        'maxZoom' => 22,
+        'maxNativeZoom' => 19,
+    ],
+    'satellite' => [
+        'url' => 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        'attribution' => 'Tiles &copy; Esri',
+        'maxZoom' => 22,
+        'maxNativeZoom' => 19,
+    ],
+    'light' => [
+        'url' => 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        'attribution' => '&copy; OpenStreetMap contributors &copy; CARTO',
+        'maxZoom' => 22,
+        'maxNativeZoom' => 19,
+    ],
+    'dark' => [
+        'url' => 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        'attribution' => '&copy; OpenStreetMap contributors &copy; CARTO',
+        'maxZoom' => 22,
+        'maxNativeZoom' => 19,
+    ],
+]);
+
+// =======================================================
 // AUTH HELPER (dimuat otomatis supaya class Auth selalu tersedia
 // di seluruh aplikasi tanpa require terpisah-pisah)
 // =======================================================

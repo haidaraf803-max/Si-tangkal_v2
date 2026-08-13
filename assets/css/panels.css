@@ -134,10 +134,12 @@
     top: calc(var(--navbar-height) + 32px);
     right: 88px;
     width: 280px;
+    max-height: calc(100vh - var(--navbar-height) - 48px);
     z-index: 500;
     display: none;
     flex-direction: column;
     gap: 4px;
+    overflow-y: auto;
 }
 
 .layer-panel.open { display: flex; }
@@ -431,12 +433,21 @@
    = navbar-height + 348px */
 .tree-popup-card {
     position: fixed;
-    top: calc(var(--navbar-height) + 280px); /* dari 348px jadi 280px, geser ~68px ke atas */
+    top: min(
+        calc(var(--navbar-height) + 280px),
+        calc(100dvh - 260px)
+    );
     right: 16px;
-    width: 300px;
+    bottom: 16px;
+
+    width: min(300px, calc(100vw - 32px));
+    box-sizing: border-box;
+
     z-index: 700;
     border-radius: var(--radius-lg);
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     display: none;
 }
 .tree-popup-card.open { display: block; }

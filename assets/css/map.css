@@ -25,6 +25,13 @@ html, body, #map {
     color: var(--color-primary) !important;
 }
 
+/* Header berakhir sekitar 94px dari atas viewport. Kontrol Leaflet bawaan
+   bergeser ke bawah agar selalu terlihat, termasuk pada halaman mini-map yang
+   tidak memakai selector #map ini. Ubah angka 22px untuk mengatur jaraknya. */
+/*#map .leaflet-top.leaflet-left {
+    top: calc(var(--navbar-height) + 22px);
+}
+
 .leaflet-bottom.leaflet-right {
     bottom: 90px !important;
     right: 16px !important;
@@ -35,35 +42,59 @@ html, body, #map {
     font-size: 10px !important;
 }
 
-/* Custom marker icons — bentuk pin lokasi (teardrop), bukan bulatan polos.
-   Dibuat murni CSS (kotak dirotasi 45°) supaya ringan & cepat dirender. */
-.tree-pin {
-    position: relative;
-    width: 30px;
-    height: 30px;
-    margin-top: 4px;
-    border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
-    border: 2px solid var(--color-white);
+/* Point pohon digambar oleh Leaflet Canvas (L.circleMarker), bukan image/PNG
+   dan bukan ribuan elemen DOM. Hanya cluster yang memakai elemen kecil untuk
+   menampilkan angka agregatnya. */
+.tree-cluster-marker {
+    background: transparent;
+    border: 0;
+}
+
+.tree-cluster {
+    width: 46px;
+    height: 46px;
+    box-sizing: border-box;
     display: flex;
-}
-
-.tree-pin-symbol {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: rotate(45deg) translate(-50%, -50%);
-    transform-origin: 0 0;
-    font-size: 15px;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid var(--color-white);
+    border-radius: 50%;
+    color: var(--color-white);
+    font-family: var(--font-main);
+    font-size: 12px;
+    font-weight: 700;
     line-height: 1;
+    letter-spacing: -0.2px;
+    box-shadow: 0 3px 10px rgba(20, 38, 30, 0.28);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.tree-pin.rw { background: var(--color-rw); }
-.tree-pin.kahati { background: var(--color-kahati); }
-.tree-pin.sehat { background: var(--color-sehat); }
-.tree-pin.kurang-sehat { background: var(--color-kurang-sehat); }
-.tree-pin.sakit { background: var(--color-sakit, #ef4444); }
+.tree-cluster:hover {
+    transform: scale(1.08);
+    box-shadow: 0 5px 14px rgba(20, 38, 30, 0.34);
+}
+
+.tree-cluster--sehat { background: var(--color-sehat); }
+.tree-cluster--kurang-sehat { background: var(--color-kurang-sehat); }
+.tree-cluster--sakit { background: var(--color-sakit, #d9534f); }
+.tree-cluster--rw { background: var(--color-rw); }
+.tree-cluster--kahati { background: var(--color-kahati); }
+.tree-cluster--campuran {
+    background: linear-gradient(135deg, var(--color-sehat) 0 44%, var(--color-kurang-sehat) 44% 78%, var(--color-sakit, #d9534f) 78% 100%);
+}
+
+.layer-row-health {
+    padding-left: 28px !important;
+    font-size: 12.5px;
+}
+
+.switch input:indeterminate + .switch-slider {
+    background: var(--color-primary-light);
+}
+
+.legend-swatch.sakit {
+    background: var(--color-sakit);
+}
 
 .my-location-marker {
     width: 18px;

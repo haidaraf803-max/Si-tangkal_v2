@@ -89,6 +89,22 @@ const DataService = (() => {
         return res.json();
     }
 
+    // WFS mengembalikan feature point dan koordinat asli. Ini berbeda dari
+    // WMS yang hanya mengirim citra PNG, sehingga dapat digambar sebagai
+    // L.circleMarker dan diringkas menjadi cluster angka di map.js.
+    function getWfsPointFeatures(layerName) {
+        const params = new URLSearchParams({
+            service: 'WFS',
+            version: '2.0.0',
+            request: 'GetFeature',
+            typeNames: layerName,
+            outputFormat: 'application/json',
+            srsName: 'EPSG:4326',
+        });
+
+        return fetchJson(`${GEOSERVER.WFS}?${params.toString()}`);
+    }
+
     return {
 
   /**
@@ -133,17 +149,14 @@ const DataService = (() => {
         },
 
         // ==========================
-        // POHON RW -> WMS
+        // POHON RW / KAHATI -> WFS GeoJSON point
         // ==========================
-        async getPohonRWWMS() {
-            return makeWmsLayer('cimahi:SITANGKAL POHON RW');
+        async getPohonRWPoints() {
+            return getWfsPointFeatures('cimahi:SITANGKAL POHON RW');
         },
 
-        // ==========================
-        // POHON KAHATI -> WMS
-        // ==========================
-        async getPohonKahatiWMS() {
-            return makeWmsLayer('cimahi:SITANGKAL POHON KAHATI');
+        async getPohonKahatiPoints() {
+            return getWfsPointFeatures('cimahi:SITANGKAL POHON KAHATI');
         },
 
         // ==========================

@@ -99,10 +99,10 @@ $stats = TreeRepository::stats();
             </div>
         </div>
 
-        <!-- Group: Pohon GeoServer (WMS, citra raster) -->
+        <!-- Group: Pohon referensi GeoServer (WFS, point vector) -->
         <div class="layer-group" id="group-geoserver">
             <div class="layer-group-header" onclick="toggleLayerGroup('group-geoserver')">
-                <span>GeoServer</span>
+                <span>Referensi GeoServer</span>
                 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div class="layer-group-body">
@@ -112,16 +112,16 @@ $stats = TreeRepository::stats();
                 </div> -->
                 <div class="layer-row indented">
                     <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-rw);"></span> Pohon RW</span>
-                    <label class="switch"><input type="checkbox" id="layer-wms-pohon-rw"><span class="switch-slider"></span></label>
+                    <label class="switch"><input type="checkbox" id="layer-pohon-rw" data-reference-tree="rw"><span class="switch-slider"></span></label>
                 </div>
                 <div class="layer-row indented">
                     <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-kahati);"></span> Pohon Kahati</span>
-                    <label class="switch"><input type="checkbox" id="layer-wms-pohon-kahati"><span class="switch-slider"></span></label>
+                    <label class="switch"><input type="checkbox" id="layer-pohon-kahati" data-reference-tree="kahati"><span class="switch-slider"></span></label>
                 </div>
             </div>
         </div>
 
-        <!-- Group: Pohon Database (marker, bisa diklik) -->
+        <!-- Group: Pohon Database (point vector + cluster, bisa diklik) -->
         <div class="layer-group" id="group-database">
             <div class="layer-group-header" onclick="toggleLayerGroup('group-database')">
                 <span>Data Pohon</span>
@@ -129,8 +129,20 @@ $stats = TreeRepository::stats();
             </div>
             <div class="layer-group-body">
                 <div class="layer-row indented">
-                    <span class="layer-row-label"><span class="layer-dot dual"></span> Pohon</span>
+                    <span class="layer-row-label"><span class="layer-dot dual"></span> Semua kondisi</span>
                     <label class="switch"><input type="checkbox" id="layer-db-pohon" ><span class="switch-slider"></span></label>
+                </div>
+                <div class="layer-row indented layer-row-health">
+                    <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-sehat);"></span> Sehat</span>
+                    <label class="switch"><input type="checkbox" id="layer-db-sehat" data-tree-health="Sehat"><span class="switch-slider"></span></label>
+                </div>
+                <div class="layer-row indented layer-row-health">
+                    <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-kurang-sehat);"></span> Kurang Sehat</span>
+                    <label class="switch"><input type="checkbox" id="layer-db-kurang-sehat" data-tree-health="Kurang Sehat"><span class="switch-slider"></span></label>
+                </div>
+                <div class="layer-row indented layer-row-health">
+                    <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-sakit, #d9534f);"></span> Sakit</span>
+                    <label class="switch"><input type="checkbox" id="layer-db-sakit" data-tree-health="Sakit"><span class="switch-slider"></span></label>
                 </div>
             </div>
         </div>
@@ -297,8 +309,8 @@ $stats = TreeRepository::stats();
         <p class="text-muted" style="font-size:12.5px; margin-bottom:14px;">Seret untuk mengubah urutan tampilan layer pada peta (layer teratas akan ditampilkan paling depan).</p>
         <ul id="layer-order-list" style="display:flex; flex-direction:column; gap:8px;">
             <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🛰️ Pohon GeoServer (Semua)</li>
-            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🛰️ Pohon GeoServer RW</li>
-            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🛰️ Pohon GeoServer Kahati</li>
+            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">• Point GeoServer RW</li>
+            <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">• Point GeoServer Kahati</li>
             <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🗄️ Pohon Database</li>
             <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">🍃 Ruang Terbuka Hijau</li>
             <li style="background:var(--color-gray-50); padding:10px 14px; border-radius:10px; font-size:13px; cursor:grab;">📍 Batas Kelurahan</li>

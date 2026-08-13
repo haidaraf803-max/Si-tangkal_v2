@@ -20,10 +20,19 @@
 @media (max-width: 600px) {
     .fab span { display: none; }
     .fab { width: 44px; height: 44px; }
-    .layer-panel { left: 16px; right: 16px; width: auto; top: calc(var(--navbar-height) + 70px); }
+    .layer-panel { left: 16px; right: 16px; width: auto; top: calc(var(--navbar-height) + 70px); max-height: calc(100vh - var(--navbar-height) - 86px); }
     .stat-cards-row { grid-template-columns: 1fr; }
     .sidebar { position: fixed; z-index: 1500; height: 100vh; }
     /* fab jadi 44px di mobile -> tinggi stack = 5*44 + 4*10 = 260px,
        jadi posisi popup ikut naik dibanding versi desktop (348px). */
-    .tree-popup-card { top: calc(var(--navbar-height) + 308px); left: 16px; right: 16px; width: auto; }
+    .tree-popup-card {
+    top: min(
+        calc(var(--navbar-height) + 112px),
+        calc(100dvh - 260px)
+    );
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: auto;
+}
 }
