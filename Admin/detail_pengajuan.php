@@ -7,6 +7,13 @@ require_once __DIR__ . '/../config.php';
 // ===== AUTH CHECK (login SELALU di /login.php, di luar folder) =====
 Auth::requireLogin('../login.php');
 require_once 'core/PengajuanModel.php';
+require_once 'core/Rbac.php';
+
+Rbac::requireAccess($config, 'pengajuan', 'view');
+$canEditPengajuan = Rbac::can($config, 'pengajuan', 'edit');
+$myRoleCode       = Rbac::currentRoleCode($config);
+$isSuperadmin     = Rbac::isSuperadmin($config);
+$currentUserId    = (int) ($_SESSION['admin']['UserId'] ?? 0);
 
 $model = new PengajuanModel($config);
 
@@ -21,6 +28,76 @@ $data = $model->getById($id);
 if (!$data) {
     header("Location: pengajuan.php");
     exit;
+}
+
+$alertMsg  = '';
+$alertType = '';
+
+// Peran yang berhak melakukan tiap aksi (superadmin selalu boleh)
+$bolehSurvey    = $canEditPengajuan && ($isSuperadmin || $myRoleCode === 'petugas_survey');
+$bolehValidasi  = $canEditPengajuan && ($isSuperadmin || $myRoleCode === 'validator');
+$bolehEksekusi  = $canEditPengajuan && ($isSuperadmin || $myRoleCode === 'tim_tangkas');
+
+// ===== AKSI: SUBMIT HASIL SURVEY (Petugas Survey) =====
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_action'] ?? '') === 'submit_survey') {
+    if (!$bolehSurvey) {
+        $alertMsg  = 'Peran Anda tidak berhak mengisi hasil survey.';
+        $alertType = 'warning';
+    } else {
+        $hasil   = ($_POST['hasil_survey'] ?? '') === 'perlu_pemangkasan' ? 'perlu_pemangkasan' : 'tidak_perlu';
+        $catatan = trim($_POST['catatan_survey'] ?? '');
+        $ok = $model->submitSurvey($id, $currentUserId, $hasil, $catatan);
+        $alertMsg  = $ok ? 'Hasil survey berhasil disimpan.' : 'Gagal menyimpan hasil survey.';
+        $alertType = $ok ? 'success' : 'danger';
+        if ($ok) {
+            $data = $model->getById($id);
+        }
+    }
+}
+
+// ===== AKSI: VALIDASI (Validator) =====
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_action'] ?? '') === 'validasi') {
+    if (!$bolehValidasi) {
+        $alertMsg  = 'Peran Anda tidak berhak melakukan validasi.';
+        $alertType = 'warning';
+    } else {
+        $approve = ($_POST['keputusan'] ?? '') === 'setuju';
+        $catatan = trim($_POST['catatan_validasi'] ?? '');
+        $ok = $model->validate($id, $currentUserId, $approve, $catatan);
+        $alertMsg  = $ok ? ($approve ? 'Pengajuan disetujui untuk dieksekusi.' : 'Pengajuan dikembalikan untuk disurvey ulang.') : 'Gagal menyimpan validasi.';
+        $alertType = $ok ? 'success' : 'danger';
+        if ($ok) {
+            $data = $model->getById($id);
+        }
+    }
+}
+
+// ===== AKSI: EKSEKUSI / DOKUMENTASI LAPANGAN (Tim Tangkas) =====
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_action'] ?? '') === 'eksekusi') {
+    if (!$bolehEksekusi) {
+        $alertMsg  = 'Peran Anda tidak berhak mengunggah dokumentasi eksekusi.';
+        $alertType = 'warning';
+    } else {
+        $uploadDir = __DIR__ . '/../images/';
+        $fotoSebelumName = '';
+        $fotoSesudahName = '';
+
+        if (!empty($_FILES['foto_sebelum']['name'])) {
+            $fotoSebelumName = 'sebelum_' . $id . '_' . time() . '_' . basename($_FILES['foto_sebelum']['name']);
+            move_uploaded_file($_FILES['foto_sebelum']['tmp_name'], $uploadDir . $fotoSebelumName);
+        }
+        if (!empty($_FILES['foto_sesudah']['name'])) {
+            $fotoSesudahName = 'sesudah_' . $id . '_' . time() . '_' . basename($_FILES['foto_sesudah']['name']);
+            move_uploaded_file($_FILES['foto_sesudah']['tmp_name'], $uploadDir . $fotoSesudahName);
+        }
+
+        $ok = $model->eksekusi($id, $currentUserId, $fotoSebelumName, $fotoSesudahName);
+        $alertMsg  = $ok ? 'Dokumentasi eksekusi berhasil disimpan, pengajuan selesai.' : 'Gagal menyimpan dokumentasi eksekusi.';
+        $alertType = $ok ? 'success' : 'danger';
+        if ($ok) {
+            $data = $model->getById($id);
+        }
+    }
 }
 
 $isDone   = (strtolower($data['Keterangan'] ?? '') === 'sudah');
@@ -41,6 +118,46 @@ require_once 'layouts/sidebar.php';
 
 <div class="row justify-content-center">
     <div class="col-12 col-xl-9">
+
+        <!-- Alert -->
+        <?php if ($alertMsg): ?>
+        <div class="alert alert-<?= $alertType ?> alert-dismissible fade show" role="alert">
+            <i class="bi bi-<?= $alertType === 'success' ? 'check-circle' : ($alertType === 'danger' ? 'x-circle' : 'exclamation-triangle') ?> me-2"></i>
+            <?= htmlspecialchars($alertMsg) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php endif; ?>
+
+        <!-- ======= TIMELINE STATUS TAHAP ======= -->
+        <?php
+        $tahapan = [
+            'diajukan'   => ['label' => 'Diajukan',    'icon' => 'bi-file-earmark-plus'],
+            'disurvey'   => ['label' => 'Disurvey',    'icon' => 'bi-binoculars'],
+            'divalidasi' => ['label' => 'Divalidasi',  'icon' => 'bi-patch-check'],
+            'ditangani'  => ['label' => 'Ditangani',   'icon' => 'bi-tools'],
+            'selesai'    => ['label' => 'Selesai',     'icon' => 'bi-check-circle'],
+        ];
+        $urutan = array_keys($tahapan);
+        $tahapSekarang = $data['status_tahap'] ?? 'diajukan';
+        $indexSekarang = array_search($tahapSekarang, $urutan, true) ?: 0;
+        ?>
+        <div class="card mb-3">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between flex-wrap gap-2">
+                    <?php foreach ($urutan as $i => $key): ?>
+                    <div class="text-center flex-fill">
+                        <div class="mx-auto d-flex align-items-center justify-content-center rounded-circle mb-1"
+                             style="width:38px; height:38px; background:<?= $i <= $indexSekarang ? 'var(--accent, #059669)' : '#e2e8f0' ?>; color:<?= $i <= $indexSekarang ? '#fff' : '#94a3b8' ?>;">
+                            <i class="bi <?= $tahapan[$key]['icon'] ?>"></i>
+                        </div>
+                        <div style="font-size:0.72rem; font-weight:600; color:<?= $i <= $indexSekarang ? 'var(--text-primary)' : '#94a3b8' ?>;">
+                            <?= $tahapan[$key]['label'] ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
 
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
@@ -167,19 +284,90 @@ require_once 'layouts/sidebar.php';
 
                 </div><!-- /.row -->
 
-                <hr class="my-4">
-
-                <div class="d-flex gap-2">
-                    <a href="pengajuan.php" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left me-1"></i> Kembali
-                    </a>
-                    <a href="edit_pengajuan.php?id=<?= $id ?>" class="btn btn-warning">
-                        <i class="bi bi-pencil me-1"></i> Edit Data
-                    </a>
-                </div>
-
             </div><!-- /.card-body -->
         </div><!-- /.card -->
+
+        <!-- ======= PANEL AKSI ALUR BERJENJANG ======= -->
+
+        <?php if ($bolehSurvey && in_array($tahapSekarang, ['diajukan'], true)): ?>
+        <div class="card mt-3">
+            <div class="card-header"><i class="bi bi-binoculars text-primary me-2"></i><strong>Input Hasil Survey Lapangan</strong></div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="form_action" value="submit_survey">
+                    <div class="mb-3">
+                        <label class="form-label">Hasil Survey <span class="text-danger">*</span></label>
+                        <select class="form-select" name="hasil_survey" required>
+                            <option value="perlu_pemangkasan">Perlu Pemangkasan / Penanganan</option>
+                            <option value="tidak_perlu">Tidak Perlu Ditangani</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Catatan Survey</label>
+                        <textarea class="form-control" name="catatan_survey" rows="3" placeholder="Kondisi pohon, alasan, dsb."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i> Kirim Hasil Survey</button>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($bolehValidasi && $tahapSekarang === 'disurvey'): ?>
+        <div class="card mt-3">
+            <div class="card-header"><i class="bi bi-patch-check text-success me-2"></i><strong>Validasi Hasil Survey</strong></div>
+            <div class="card-body">
+                <p class="text-muted" style="font-size:0.85rem;">Hasil survey: <strong><?= htmlspecialchars($data['hasil_survey'] ?? '-') ?></strong></p>
+                <form method="POST">
+                    <input type="hidden" name="form_action" value="validasi">
+                    <div class="mb-3">
+                        <label class="form-label">Keputusan <span class="text-danger">*</span></label>
+                        <select class="form-select" name="keputusan" required>
+                            <option value="setuju">Setujui — lanjut ke Tim Tangkas</option>
+                            <option value="tolak">Tolak — kembalikan untuk disurvey ulang</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Catatan Validasi</label>
+                        <textarea class="form-control" name="catatan_validasi" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> Simpan Validasi</button>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($bolehEksekusi && $tahapSekarang === 'divalidasi'): ?>
+        <div class="card mt-3">
+            <div class="card-header"><i class="bi bi-tools text-warning me-2"></i><strong>Dokumentasi Eksekusi Lapangan</strong></div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="form_action" value="eksekusi">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="form-label">Foto Sebelum</label>
+                            <input type="file" class="form-control" name="foto_sebelum" accept="image/*">
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label">Foto Sesudah</label>
+                            <input type="file" class="form-control" name="foto_sesudah" accept="image/*">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-warning text-white mt-3"><i class="bi bi-upload me-1"></i> Simpan & Selesaikan</button>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <div class="d-flex gap-2 mt-3">
+            <a href="pengajuan.php" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Kembali
+            </a>
+            <?php if ($canEditPengajuan): ?>
+            <a href="edit_pengajuan.php?id=<?= $id ?>" class="btn btn-warning">
+                <i class="bi bi-pencil me-1"></i> Edit Data
+            </a>
+            <?php endif; ?>
+        </div>
 
     </div>
 </div>

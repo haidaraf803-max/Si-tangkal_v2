@@ -3,57 +3,56 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/Admin/core/PengajuanModel.php';
 
 $pengajuan = new PengajuanModel($config);
-$status_action = null;
+$status_action = null; 
 
 /* ======================= PROSES INSERT ======================= */
 if (isset($_POST['simpan'])) {
-    // Input pemangkasan/penebangan pohon WAJIB login terlebih dahulu.
+    // Hanya user yang sudah login yang boleh mengirim pengajuan penebangan/pemangkasan
     if (!Auth::isLoggedIn()) {
-        header('Location: login.php?redirect=' . urlencode('Pengajuan.php'));
-        exit;
-    }
+        $status_action = 'error_login';
+    } else {
+        $namaFileBaru = '';
+        $status_action = null;
 
-    $namaFileBaru = '';
-    $status_action = null;
+        // Proses upload jika ada file
+        if (isset($_FILES['foto_pohon']) && $_FILES['foto_pohon']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $folder   = __DIR__ . '/images/';
+            $allowed  = ['jpg', 'jpeg', 'png', 'gif'];
+            $maxSize  = 5 * 1024 * 1024; // 5 MB
 
-    // Proses upload jika ada file
-    if (isset($_FILES['foto_pohon']) && $_FILES['foto_pohon']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $folder   = __DIR__ . '/images/';
-        $allowed  = ['jpg', 'jpeg', 'png', 'gif'];
-        $maxSize  = 5 * 1024 * 1024; // 5 MB
+            if (!is_dir($folder)) {
+                mkdir($folder, 0755, true);
+            }
 
-        if (!is_dir($folder)) {
-            mkdir($folder, 0755, true);
-        }
+            $file = $_FILES['foto_pohon'];
+            $ext  = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
-        $file = $_FILES['foto_pohon'];
-        $ext  = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-
-        if ($file['error'] !== UPLOAD_ERR_OK) {
-            $status_action = 'error_simpan';
-        } elseif (!in_array($ext, $allowed)) {
-            $status_action = 'error_format';
-        } elseif ($file['size'] > $maxSize) {
-            $status_action = 'error_size';
-        } else {
-            $newName = uniqid('dok_', true) . '.' . $ext;
-            if (move_uploaded_file($file['tmp_name'], $folder . $newName)) {
-                $namaFileBaru = $newName;
-            } else {
+            if ($file['error'] !== UPLOAD_ERR_OK) {
                 $status_action = 'error_simpan';
+            } elseif (!in_array($ext, $allowed)) {
+                $status_action = 'error_format';
+            } elseif ($file['size'] > $maxSize) {
+                $status_action = 'error_size';
+            } else {
+                $newName = uniqid('dok_', true) . '.' . $ext;
+                if (move_uploaded_file($file['tmp_name'], $folder . $newName)) {
+                    $namaFileBaru = $newName;
+                } else {
+                    $status_action = 'error_simpan';
+                }
             }
         }
-    }
 
-    if ($status_action === null) {
-        $result = $pengajuan->create(
-            $_POST['no_surat'],
-            $_POST['nama_pemohon'],
-            $_POST['nomor_telepon'],
-            $_POST['lokasi_pohon'],
-            $namaFileBaru
-        );
-        $status_action = $result ? 'success_simpan' : 'error_simpan';
+        if ($status_action === null) {
+            $result = $pengajuan->create(
+                $_POST['no_surat'],
+                $_POST['nama_pemohon'],
+                $_POST['nomor_telepon'],
+                $_POST['lokasi_pohon'],
+                $namaFileBaru
+            );
+            $status_action = $result ? 'success_simpan' : 'error_simpan';
+        }
     }
 }
 
@@ -368,12 +367,10 @@ require_once __DIR__ . '/includes/site-header.php';
             </button>
           </form>
           <?php else: ?>
-          <div class="text-center py-3">
+          <div class="text-center py-4">
             <i class="bi bi-lock text-muted mb-3 d-block" style="font-size: 2.5rem;"></i>
-            <p class="text-muted mb-4" style="font-size:0.9rem;">
-              Anda harus <strong>login</strong> terlebih dahulu untuk dapat mengajukan permohonan pemangkasan atau penebangan pohon.
-            </p>
-            <a href="login.php?redirect=<?= urlencode('Pengajuan.php') ?>" class="btn btn-submit w-100">
+            <p class="text-muted mb-3">Anda harus login terlebih dahulu untuk dapat membuat pengajuan penebangan/pemangkasan pohon.</p>
+            <a href="login.php?redirect=Pengajuan.php" class="btn btn-submit w-100">
               <i class="bi bi-box-arrow-in-right me-2"></i>Login untuk Mengajukan
             </a>
           </div>
@@ -473,7 +470,16 @@ require_once __DIR__ . '/includes/site-header.php';
 <script>
 // Alerts
 document.addEventListener('DOMContentLoaded', function() {
-  <?php if ($status_action === 'success_simpan'): ?>
+  <?php if ($status_action === 'error_login'): ?>
+  Swal.fire({
+    icon: 'warning',
+    title: 'Anda Belum Login',
+    text: 'Silakan login terlebih dahulu untuk dapat mengirim pengajuan penebangan/pemangkasan pohon.',
+    confirmButtonColor: '#059669'
+  }).then(function () {
+    window.location.href = 'login.php?redirect=Pengajuan.php';
+  });
+  <?php elseif ($status_action === 'success_simpan'): ?>
   Swal.fire({
     icon: 'success',
     title: 'Pengajuan Terkirim!',

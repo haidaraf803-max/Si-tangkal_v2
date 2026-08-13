@@ -7,15 +7,31 @@ require_once __DIR__ . '/../config.php';
 // ===== AUTH CHECK (login SELALU di /login.php, di luar folder) =====
 Auth::requireLogin('../login.php');
 require_once 'core/UserModel.php';
+require_once 'core/RoleModel.php';
+require_once 'core/Rbac.php';
+
+// Manajemen Pengguna: hanya peran yang diberi izin (default: Superadmin)
+Rbac::requireAccess($config, 'users', 'view');
+$canCreateUser = Rbac::can($config, 'users', 'create');
+$canEditUser   = Rbac::can($config, 'users', 'edit');
+$canDeleteUser = Rbac::can($config, 'users', 'delete');
 
 $model     = new UserModel($config);
+$roleModel = new RoleModel($config);
 $alertMsg  = '';
 $alertType = '';
 
-$roleOptions =  ['Admin', 'Petugas Lapangan'];
+// Daftar role diambil dari tabel `roles` (RBAC), bukan lagi hardcoded,
+// supaya role baru yang dibuat lewat Manajemen Role otomatis muncul di sini.
+$rolesList = $roleModel->getAll();
 
 // ===== DELETE =====
 if (isset($_GET['hapus'])) {
+    if (!$canDeleteUser) {
+        header("Location: users.php?deleted=forbidden");
+        exit;
+    }
+
     $hapusId = (int) $_GET['hapus'];
     $currentUserId = (int) ($_SESSION['admin']['UserId'] ?? 0);
 
@@ -33,6 +49,9 @@ if (isset($_GET['deleted'])) {
     if ($_GET['deleted'] === 'self') {
         $alertMsg  = 'Tidak bisa menghapus akun yang sedang Anda gunakan untuk login.';
         $alertType = 'warning';
+    } elseif ($_GET['deleted'] === 'forbidden') {
+        $alertMsg  = 'Peran Anda tidak memiliki izin menghapus pengguna.';
+        $alertType = 'warning';
     } else {
         $alertMsg  = $_GET['deleted'] == '1' ? 'Data pengguna berhasil dihapus.' : 'Gagal menghapus data pengguna.';
         $alertType = $_GET['deleted'] == '1' ? 'success' : 'danger';
@@ -41,48 +60,62 @@ if (isset($_GET['deleted'])) {
 
 // ===== CREATE =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
-    $username = trim($_POST['username'] ?? '');
-    $password = trim($_POST['password'] ?? '');
-    $email    = trim($_POST['email'] ?? '');
-    $type     = trim($_POST['type'] ?? '');
-    $name     = trim($_POST['name'] ?? '');
-
-    if ($username !== '' && $password !== '' && $email !== '' && $type !== '' && $name !== '') {
-        if ($model->usernameExists($username)) {
-            $alertMsg  = "Username \"$username\" sudah digunakan.";
-            $alertType = 'warning';
-        } else {
-            $ok = $model->create($username, $password, $email, $type, $name);
-            $alertMsg  = $ok ? 'Pengguna baru berhasil ditambahkan.' : 'Gagal menambahkan pengguna.';
-            $alertType = $ok ? 'success' : 'danger';
-        }
-    } else {
-        $alertMsg  = 'Semua field wajib diisi.';
+    if (!$canCreateUser) {
+        $alertMsg  = 'Peran Anda tidak memiliki izin menambah pengguna.';
         $alertType = 'warning';
+    } else {
+        $username = trim($_POST['username'] ?? '');
+        $password = trim($_POST['password'] ?? '');
+        $email    = trim($_POST['email'] ?? '');
+        $roleId   = (int) ($_POST['role_id'] ?? 0);
+        $name     = trim($_POST['name'] ?? '');
+        $roleRow  = $roleId ? $roleModel->getById($roleId) : false;
+        $type     = $roleRow['name'] ?? '';
+
+        if ($username !== '' && $password !== '' && $email !== '' && $roleRow && $name !== '') {
+            if ($model->usernameExists($username)) {
+                $alertMsg  = "Username \"$username\" sudah digunakan.";
+                $alertType = 'warning';
+            } else {
+                $ok = $model->create($username, $password, $email, $type, $name, $roleId);
+                $alertMsg  = $ok ? 'Pengguna baru berhasil ditambahkan.' : 'Gagal menambahkan pengguna.';
+                $alertType = $ok ? 'success' : 'danger';
+            }
+        } else {
+            $alertMsg  = 'Semua field wajib diisi, termasuk memilih Role.';
+            $alertType = 'warning';
+        }
     }
 }
 
 // ===== EDIT =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user'])) {
-    $userId   = (int) ($_POST['user_id'] ?? 0);
-    $username = trim($_POST['username'] ?? '');
-    $password = trim($_POST['password'] ?? '');
-    $email    = trim($_POST['email'] ?? '');
-    $type     = trim($_POST['type'] ?? '');
-    $name     = trim($_POST['name'] ?? '');
-
-    if ($userId > 0 && $username !== '' && $email !== '' && $type !== '' && $name !== '') {
-        if ($model->usernameExists($username, $userId)) {
-            $alertMsg  = "Username \"$username\" sudah digunakan oleh pengguna lain.";
-            $alertType = 'warning';
-        } else {
-            $ok = $model->update($userId, $username, $password, $email, $type, $name);
-            $alertMsg  = $ok ? 'Data pengguna berhasil diperbarui.' : 'Gagal memperbarui data pengguna.';
-            $alertType = $ok ? 'success' : 'danger';
-        }
-    } else {
-        $alertMsg  = 'Username, email, tipe, dan nama wajib diisi.';
+    if (!$canEditUser) {
+        $alertMsg  = 'Peran Anda tidak memiliki izin mengubah pengguna.';
         $alertType = 'warning';
+    } else {
+        $userId   = (int) ($_POST['user_id'] ?? 0);
+        $username = trim($_POST['username'] ?? '');
+        $password = trim($_POST['password'] ?? '');
+        $email    = trim($_POST['email'] ?? '');
+        $roleId   = (int) ($_POST['role_id'] ?? 0);
+        $name     = trim($_POST['name'] ?? '');
+        $roleRow  = $roleId ? $roleModel->getById($roleId) : false;
+        $type     = $roleRow['name'] ?? '';
+
+        if ($userId > 0 && $username !== '' && $email !== '' && $roleRow && $name !== '') {
+            if ($model->usernameExists($username, $userId)) {
+                $alertMsg  = "Username \"$username\" sudah digunakan oleh pengguna lain.";
+                $alertType = 'warning';
+            } else {
+                $ok = $model->update($userId, $username, $password, $email, $type, $name, $roleId);
+                $alertMsg  = $ok ? 'Data pengguna berhasil diperbarui.' : 'Gagal memperbarui data pengguna.';
+                $alertType = $ok ? 'success' : 'danger';
+            }
+        } else {
+            $alertMsg  = 'Username, email, role, dan nama wajib diisi.';
+            $alertType = 'warning';
+        }
     }
 }
 
@@ -104,12 +137,22 @@ require_once 'layouts/sidebar.php';
         <p class="text-muted mb-0" style="font-size:0.8rem;">Kelola akun pengguna aplikasi Si-TANGKAL (t_users)</p>
     </div>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalExportUsers">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-        </button>
+        <?php
+            $exportModul        = 'users';
+            $exportLabel        = 'Data Pengguna';
+            $exportSupportsDate = true;
+            require 'layouts/export_modal.php';
+        ?>
+        <?php if (Rbac::can($config, 'roles', 'view')): ?>
+        <a href="roles.php" class="btn btn-outline-secondary">
+            <i class="bi bi-shield-lock me-1"></i> Kelola Role & Akses
+        </a>
+        <?php endif; ?>
+        <?php if ($canCreateUser): ?>
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTambahUser">
             <i class="bi bi-person-plus me-1"></i> Tambah Pengguna
         </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -162,7 +205,7 @@ require_once 'layouts/sidebar.php';
                         <th>Username</th>
                         <th>Nama</th>
                         <th>Email</th>
-                        <th class="text-center">Tipe</th>
+                        <th class="text-center">Role</th>
                         <th>Dibuat</th>
                         <th class="text-center pe-3">Aksi</th>
                     </tr>
@@ -176,7 +219,7 @@ require_once 'layouts/sidebar.php';
                             <td><?= htmlspecialchars($row['Name']) ?></td>
                             <td><?= htmlspecialchars($row['Email']) ?></td>
                             <td class="text-center">
-                                <span class="badge rounded-pill bg-success-subtle text-success"><?= htmlspecialchars($row['Type']) ?></span>
+                                <span class="badge rounded-pill bg-success-subtle text-success"><?= htmlspecialchars($row['role_name'] ?? $row['Type']) ?></span>
                             </td>
                             <td class="text-muted"><?= $row['CreatedDate'] ? htmlspecialchars(date('d M Y', strtotime($row['CreatedDate']))) : '—' ?></td>
                             <td class="text-center pe-3">
@@ -184,15 +227,19 @@ require_once 'layouts/sidebar.php';
                                         data-bs-toggle="modal" data-bs-target="#modalDetailUser<?= (int) $row['UserId'] ?>">
                                     <i class="bi bi-info"></i>
                                 </button>
+                                <?php if ($canEditUser): ?>
                                 <button type="button" class="btn btn-sm btn-outline-warning" title="Edit"
                                         data-bs-toggle="modal" data-bs-target="#modalEditUser<?= (int) $row['UserId'] ?>">
                                     <i class="bi bi-pencil"></i>
                                 </button>
+                                <?php endif; ?>
+                                <?php if ($canDeleteUser): ?>
                                 <a href="users.php?hapus=<?= (int) $row['UserId'] ?>"
                                    class="btn btn-sm btn-outline-danger" title="Hapus"
                                    onclick="return confirm('Yakin ingin menghapus pengguna <?= htmlspecialchars(addslashes($row['Username'])) ?>?')">
                                     <i class="bi bi-trash"></i>
                                 </a>
+                                <?php endif; ?>
 
                                 <!-- Modal Detail -->
                                 <div class="modal fade" id="modalDetailUser<?= (int) $row['UserId'] ?>" tabindex="-1" aria-hidden="true">
@@ -209,8 +256,8 @@ require_once 'layouts/sidebar.php';
                                                         <div class="fw-500"><?= htmlspecialchars($row['Username']) ?></div>
                                                     </div>
                                                     <div class="col-6">
-                                                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Tipe</div>
-                                                        <div class="fw-500"><?= htmlspecialchars($row['Type']) ?></div>
+                                                        <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Role</div>
+                                                        <div class="fw-500"><?= htmlspecialchars($row['role_name'] ?? $row['Type']) ?></div>
                                                     </div>
                                                     <div class="col-12">
                                                         <div class="text-muted" style="font-size:0.72rem; text-transform:uppercase;">Nama Lengkap</div>
@@ -256,15 +303,14 @@ require_once 'layouts/sidebar.php';
                                                     <input type="email" class="form-control" name="email" value="<?= htmlspecialchars($row['Email']) ?>" required>
                                                 </div>
                                                 <div class="mb-3">
-                                                    <label class="form-label">Tipe / Role <span class="text-danger">*</span></label>
-                                                    <select class="form-select" name="type" required>
-                                                        <?php foreach ($roleOptions as $opt): ?>
-                                                        <option value="<?= $opt ?>" <?= ($row['Type'] === $opt) ? 'selected' : '' ?>><?= $opt ?></option>
+                                                    <label class="form-label">Role <span class="text-danger">*</span></label>
+                                                    <select class="form-select" name="role_id" required>
+                                                        <option value="">-- Pilih Role --</option>
+                                                        <?php foreach ($rolesList as $opt): ?>
+                                                        <option value="<?= (int) $opt['id'] ?>" <?= ((int) $row['role_id'] === (int) $opt['id']) ? 'selected' : '' ?>><?= htmlspecialchars($opt['name']) ?></option>
                                                         <?php endforeach; ?>
-                                                        <?php if (!in_array($row['Type'], $roleOptions, true)): ?>
-                                                        <option value="<?= htmlspecialchars($row['Type']) ?>" selected><?= htmlspecialchars($row['Type']) ?></option>
-                                                        <?php endif; ?>
                                                     </select>
+                                                    <div class="form-text">Role menentukan menu & aksi apa saja yang bisa diakses pengguna ini. Kelola lewat <a href="roles.php">Manajemen Role</a>.</div>
                                                 </div>
                                                 <div class="mb-1">
                                                     <label class="form-label">Password Baru</label>
@@ -319,11 +365,11 @@ require_once 'layouts/sidebar.php';
                     <input type="email" class="form-control" name="email" required>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Tipe / Role <span class="text-danger">*</span></label>
-                    <select class="form-select" name="type" required>
-                        <option value="">-- Pilih Tipe --</option>
-                        <?php foreach ($roleOptions as $opt): ?>
-                        <option value="<?= $opt ?>"><?= $opt ?></option>
+                    <label class="form-label">Role <span class="text-danger">*</span></label>
+                    <select class="form-select" name="role_id" required>
+                        <option value="">-- Pilih Role --</option>
+                        <?php foreach ($rolesList as $opt): ?>
+                        <option value="<?= (int) $opt['id'] ?>"><?= htmlspecialchars($opt['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -337,63 +383,6 @@ require_once 'layouts/sidebar.php';
                 <button type="submit" name="add_user" class="btn btn-success">Simpan Pengguna</button>
             </div>
         </form>
-    </div>
-</div>
-
-<!-- ======= MODAL: EXPORT CSV DATA USERS ======= -->
-<div class="modal fade" id="modalExportUsers" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="GET" action="export_users.php" target="_blank">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Data Pengguna (CSV)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <label class="form-label fw-semibold">Pilihan Data</label>
-
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="mode" id="exportUsersAll" value="all" checked
-                               onchange="document.getElementById('usersRangeFields').style.display='none';">
-                        <label class="form-check-label" for="exportUsersAll">
-                            Export Seluruh Data Pengguna
-                        </label>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="radio" name="mode" id="exportUsersRange" value="range"
-                               onchange="document.getElementById('usersRangeFields').style.display='flex';">
-                        <label class="form-check-label" for="exportUsersRange">
-                            Export Berdasarkan Tanggal Dibuat
-                        </label>
-                    </div>
-
-                    <div id="usersRangeFields" class="row g-2" style="display:none;">
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_awal">Dari Tanggal</label>
-                            <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_akhir">Sampai Tanggal</label>
-                            <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text">
-                                Kosongkan salah satu jika ingin membatasi hanya dari/sampai tanggal tertentu saja.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-download me-1"></i> Export CSV
-                    </button>
-                </div>
-            </form>
-        </div>
     </div>
 </div>
 

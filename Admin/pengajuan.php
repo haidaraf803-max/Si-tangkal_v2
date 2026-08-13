@@ -6,6 +6,11 @@ require_once __DIR__ . '/../config.php';
 
 // ===== AUTH CHECK (login SELALU di /login.php, di luar folder) =====
 Auth::requireLogin('../login.php');
+require_once 'core/Rbac.php';
+Rbac::requireAccess($config, 'pengajuan', 'view');
+$canCreatePengajuan = Rbac::can($config, 'pengajuan', 'create');
+$canEditPengajuan   = Rbac::can($config, 'pengajuan', 'edit');
+$canDeletePengajuan = Rbac::can($config, 'pengajuan', 'delete');
 require_once 'core/PengajuanModel.php';
 
 $model       = new PengajuanModel($config);
@@ -14,6 +19,7 @@ $alertType   = '';
 
 // ===== DELETE =====
 if (isset($_GET['hapus'])) {
+    if (!$canDeletePengajuan) { header('Location: ' . basename(__FILE__) . '?deleted=forbidden'); exit; }
     $hapusId = (int) $_GET['hapus'];
     if ($model->delete($hapusId)) {
         header("Location: pengajuan.php?deleted=1");
@@ -25,12 +31,21 @@ if (isset($_GET['hapus'])) {
 
 // Alert dari redirect
 if (isset($_GET['deleted'])) {
-    $alertMsg  = $_GET['deleted'] == '1' ? 'Data pengajuan berhasil dihapus.' : 'Gagal menghapus data.';
-    $alertType = $_GET['deleted'] == '1' ? 'success' : 'danger';
+    if ($_GET['deleted'] === 'forbidden') {
+        $alertMsg  = 'Peran Anda tidak memiliki izin menghapus data pengajuan.';
+        $alertType = 'warning';
+    } else {
+        $alertMsg  = $_GET['deleted'] == '1' ? 'Data pengajuan berhasil dihapus.' : 'Gagal menghapus data.';
+        $alertType = $_GET['deleted'] == '1' ? 'success' : 'danger';
+    }
 }
 
 // ===== CREATE =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create') {
+    if (!$canCreatePengajuan) {
+        $alertMsg  = 'Peran Anda tidak memiliki izin menambah data pengajuan.';
+        $alertType = 'warning';
+    } else {
     $noSurat = trim($_POST['no_surat'] ?? '');
     $nama    = trim($_POST['nama'] ?? '');
     $lokasi  = trim($_POST['lokasi'] ?? '');
@@ -46,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } else {
         $alertMsg  = 'Semua field wajib diisi.';
         $alertType = 'warning';
+    }
     }
 }
 
@@ -65,13 +81,18 @@ require_once 'layouts/sidebar.php';
         <h4 class="fw-bold mb-1">Data Pengajuan</h4>
         <p class="text-muted mb-0" style="font-size:0.8rem;">Kelola semua data pengajuan penanganan pohon</p>
     </div>
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalExportPengajuan">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-        </button>
+    <div class="d-flex gap-2 flex-wrap">
+        <?php
+            $exportModul        = 'pengajuan';
+            $exportLabel        = 'Data Pengajuan';
+            $exportSupportsDate = true;
+            require 'layouts/export_modal.php';
+        ?>
+        <?php if ($canCreatePengajuan): ?>
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTambah">
             <i class="bi bi-plus-lg me-1"></i> Tambah Pengajuan
         </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -140,18 +161,22 @@ require_once 'layouts/sidebar.php';
                                 <?php endif; ?>
                             </td>
                             <td class="text-center pe-3">
+                                <?php if ($canEditPengajuan): ?>
                                 <a href="edit_pengajuan.php?id=<?= (int)$row['Id'] ?>"
                                    class="btn btn-sm btn-outline-warning"
                                    title="Edit"
                                    onclick="event.stopPropagation()">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                <?php endif; ?>
+                                <?php if ($canDeletePengajuan): ?>
                                 <a href="pengajuan.php?hapus=<?= (int)$row['Id'] ?>"
                                    class="btn btn-sm btn-outline-danger"
                                    title="Hapus"
                                    onclick="event.stopPropagation(); return confirm('Yakin ingin menghapus pengajuan ini?')">
                                     <i class="bi bi-trash"></i>
                                 </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -202,63 +227,6 @@ require_once 'layouts/sidebar.php';
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success">
                         <i class="bi bi-save me-1"></i> Simpan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- ======= MODAL: EXPORT CSV DATA PENGAJUAN ======= -->
-<div class="modal fade" id="modalExportPengajuan" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="GET" action="export_pengajuan.php" target="_blank">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Data Pengajuan (CSV)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <label class="form-label fw-semibold">Pilihan Data</label>
-
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="mode" id="exportPengajuanAll" value="all" checked
-                               onchange="document.getElementById('pengajuanRangeFields').style.display='none';">
-                        <label class="form-check-label" for="exportPengajuanAll">
-                            Export Seluruh Data Pengajuan
-                        </label>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="radio" name="mode" id="exportPengajuanRange" value="range"
-                               onchange="document.getElementById('pengajuanRangeFields').style.display='flex';">
-                        <label class="form-check-label" for="exportPengajuanRange">
-                            Export Berdasarkan Tanggal Disposisi Surat
-                        </label>
-                    </div>
-
-                    <div id="pengajuanRangeFields" class="row g-2" style="display:none;">
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_awal">Dari Tanggal</label>
-                            <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_akhir">Sampai Tanggal</label>
-                            <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text">
-                                Kosongkan salah satu jika ingin membatasi hanya dari/sampai tanggal tertentu saja.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer" style="border-top:1px solid var(--border-color);">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-download me-1"></i> Export CSV
                     </button>
                 </div>
             </form>

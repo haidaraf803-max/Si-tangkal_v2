@@ -188,8 +188,15 @@ public function create(
     float $koordinat_y,
     string $keterangan,
     string $umur_pohon,
-    ?string $foto = null
+    ?string $foto = null,
+    ?int $userId = null
 ): bool {
+
+    // ===== HISTORI / AUDIT TRAIL =====
+    // Simpan kondisi lama sebelum ditimpa, supaya data lama tidak
+    // hilang (sesuai dokumen kebutuhan) — dipakai tab "Riwayat" di
+    // detail_pohon.php.
+    $this->recordHistori($id, $userId);
 
     $sql = "UPDATE pohon SET
         nama_lokal = :nama_lokal,
@@ -253,6 +260,48 @@ public function create(
 
     return $stmt->execute($params);
 }
+
+    /**
+     * Simpan snapshot kondisi pohon saat ini ke `pohon_histori`
+     * sebelum ditimpa oleh update(). Dipanggil otomatis dari update().
+     */
+    private function recordHistori(int $pohonId, ?int $userId = null): void
+    {
+        $current = $this->getById($pohonId);
+        if (!$current) {
+            return; // data baru / id tidak ditemukan, tidak ada yang perlu disimpan
+        }
+
+        $stmt = $this->conn->prepare(
+            "INSERT INTO pohon_histori (pohon_id, kondisi_kesehatan, umur_pohon, keterangan, snapshot_json, diubah_oleh)
+             VALUES (:pohon_id, :kondisi, :umur, :keterangan, :snapshot, :diubah_oleh)"
+        );
+        $stmt->execute([
+            ':pohon_id'    => $pohonId,
+            ':kondisi'     => $current['kesehatan'] ?? null,
+            ':umur'        => $current['umur_pohon'] ?? null,
+            ':keterangan'  => $current['keterangan'] ?? null,
+            ':snapshot'    => json_encode($current, JSON_UNESCAPED_UNICODE),
+            ':diubah_oleh' => $userId ?: ($_SESSION['admin']['UserId'] ?? null),
+        ]);
+    }
+
+    /**
+     * Ambil riwayat perubahan kondisi 1 pohon, terbaru dulu.
+     * Dipakai tab "Riwayat" di detail_pohon.php & api/pohon/history.php.
+     */
+    public function getHistori(int $pohonId): array
+    {
+        $stmt = $this->conn->prepare(
+            "SELECT h.*, u.Name AS diubah_oleh_nama
+             FROM pohon_histori h
+             LEFT JOIN t_users u ON u.UserId = h.diubah_oleh
+             WHERE h.pohon_id = ?
+             ORDER BY h.diubah_pada DESC"
+        );
+        $stmt->execute([$pohonId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
     /**
      * Hapus data pohon berdasarkan ID.
      * File foto fisiknya (kolom `foto`) ikut dihapus dari assets/foto.
@@ -336,41 +385,5 @@ public function create(
     public function countAll(): int
     {
         return (int) $this->conn->query("SELECT COUNT(*) FROM pohon")->fetchColumn();
-    }
-
-    /**
-     * Ambil data pohon untuk keperluan export CSV.
-     * Tabel `pohon` tidak memiliki kolom tanggal pencatatan, sehingga
-     * filter "tanggal" di sini menggunakan rentang TAHUN TANAM sebagai
-     * pendekatan terdekat. Kosongkan kedua parameter untuk export
-     * SELURUH data tanpa filter.
-     */
-    public function getForExport(string $tahunAwal = '', string $tahunAkhir = ''): array
-    {
-        $sql        = "SELECT * FROM pohon";
-        $conditions = [];
-        $params     = [];
-
-        if ($tahunAwal !== '' && $tahunAkhir !== '') {
-            $conditions[] = "tahun_tanam BETWEEN :tahun_awal AND :tahun_akhir";
-            $params[':tahun_awal']  = $tahunAwal;
-            $params[':tahun_akhir'] = $tahunAkhir;
-        } elseif ($tahunAwal !== '') {
-            $conditions[] = "tahun_tanam >= :tahun_awal";
-            $params[':tahun_awal'] = $tahunAwal;
-        } elseif ($tahunAkhir !== '') {
-            $conditions[] = "tahun_tanam <= :tahun_akhir";
-            $params[':tahun_akhir'] = $tahunAkhir;
-        }
-
-        if (!empty($conditions)) {
-            $sql .= " WHERE " . implode(' AND ', $conditions);
-        }
-
-        $sql .= " ORDER BY id DESC";
-
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

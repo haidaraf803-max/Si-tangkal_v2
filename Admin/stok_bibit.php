@@ -6,11 +6,21 @@ require_once __DIR__ . '/../config.php';
 
 // ===== AUTH CHECK (login SELALU di /login.php, di luar folder) =====
 Auth::requireLogin('../login.php');
+require_once 'core/Rbac.php';
+Rbac::requireAccess($config, 'stok_bibit', 'view');
+$canCreateStok = Rbac::can($config, 'stok_bibit', 'create');
+$canEditStok   = Rbac::can($config, 'stok_bibit', 'edit');
+$canDeleteStok = Rbac::can($config, 'stok_bibit', 'delete');
 
 // ===== PROSES CRUD =====
 
 // 1. Tambah Data
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_stok'])) {
+    if (!$canCreateStok) {
+        $_SESSION['flash'] = ['type' => 'warning', 'msg' => 'Peran Anda tidak memiliki izin menambah stok bibit.'];
+        header("Location: stok_bibit.php");
+        exit;
+    }
     $jenis_tanaman = trim($_POST['jenis_tanaman'] ?? '');
     $jumlah = (int)($_POST['jumlah_tersedia'] ?? 0);
     $sumber_array = $_POST['sumber_bibit'] ?? [];
@@ -38,6 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_stok'])) {
 
 // 2. Edit Data
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_stok'])) {
+    if (!$canEditStok) {
+        $_SESSION['flash'] = ['type' => 'warning', 'msg' => 'Peran Anda tidak memiliki izin mengubah stok bibit.'];
+        header("Location: stok_bibit.php");
+        exit;
+    }
     $id_stok = (int)($_POST['id_stok'] ?? 0);
     $jenis_tanaman = trim($_POST['jenis_tanaman'] ?? '');
     $jumlah = (int)($_POST['jumlah_tersedia'] ?? 0);
@@ -74,6 +89,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_stok'])) {
 
 // 3. Hapus Data
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_stok'])) {
+    if (!$canDeleteStok) {
+        $_SESSION['flash'] = ['type' => 'warning', 'msg' => 'Peran Anda tidak memiliki izin menghapus stok bibit.'];
+        header("Location: stok_bibit.php");
+        exit;
+    }
     $id_stok = (int)($_POST['id_stok'] ?? 0);
     if ($id_stok > 0) {
         try {
@@ -119,13 +139,18 @@ require_once 'layouts/sidebar.php';
         <h4 class="fw-bold mb-1" style="color:var(--text-primary);">Kelola Stok Bibit</h4>
         <p class="text-muted mb-0" style="font-size:0.85rem;">Manajemen persediaan bibit tanaman (APBD & Mandiri)</p>
     </div>
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalExportStok">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-        </button>
+    <div class="d-flex gap-2 flex-wrap">
+        <?php
+            $exportModul        = 'stok_bibit';
+            $exportLabel        = 'Stok Bibit';
+            $exportSupportsDate = true;
+            require 'layouts/export_modal.php';
+        ?>
+        <?php if ($canCreateStok): ?>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTambahStok">
             <i class="bi bi-plus-lg me-1"></i> Tambah Stok Baru
         </button>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -199,12 +224,15 @@ require_once 'layouts/sidebar.php';
                             </td>
                             <td class="text-center pe-4">
                                 <div class="d-flex justify-content-center gap-2">
+                                    <?php if ($canEditStok): ?>
                                     <!-- Tombol Edit -->
                                     <button class="btn btn-sm btn-outline-warning" title="Edit Data" 
                                             data-bs-toggle="modal" data-bs-target="#modalEditStok<?= $row['id_stok'] ?>">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
+                                    <?php endif; ?>
 
+                                    <?php if ($canDeleteStok): ?>
                                     <!-- Form Hapus -->
                                     <form method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus bibit <?= htmlspecialchars($row['jenis_tanaman']) ?>?');">
                                         <input type="hidden" name="id_stok" value="<?= $row['id_stok'] ?>">
@@ -212,6 +240,7 @@ require_once 'layouts/sidebar.php';
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
+                                    <?php endif; ?>
                                 </div>
 
                                 <!-- Modal Edit Stok -->
@@ -327,62 +356,5 @@ require_once 'layouts/sidebar.php';
 </div>
 
 
-
-<!-- ======= MODAL: EXPORT CSV DATA STOK BIBIT ======= -->
-<div class="modal fade" id="modalExportStok" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="GET" action="export_stok_bibit.php" target="_blank">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Data Stok Bibit (CSV)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <label class="form-label fw-semibold">Pilihan Data</label>
-
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="mode" id="exportStokAll" value="all" checked
-                               onchange="document.getElementById('stokRangeFields').style.display='none';">
-                        <label class="form-check-label" for="exportStokAll">
-                            Export Seluruh Data Stok Bibit
-                        </label>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="radio" name="mode" id="exportStokRange" value="range"
-                               onchange="document.getElementById('stokRangeFields').style.display='flex';">
-                        <label class="form-check-label" for="exportStokRange">
-                            Export Berdasarkan Tanggal Update
-                        </label>
-                    </div>
-
-                    <div id="stokRangeFields" class="row g-2" style="display:none;">
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_awal">Dari Tanggal</label>
-                            <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_akhir">Sampai Tanggal</label>
-                            <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text">
-                                Kosongkan salah satu jika ingin membatasi hanya dari/sampai tanggal tertentu saja.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-download me-1"></i> Export CSV
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <?php require_once 'layouts/footer.php'; ?>

@@ -363,46 +363,6 @@ class MonitoringModel
     }
 
     /**
-     * Ambil data monitoring (+ info pohon & petugas) untuk keperluan export CSV.
-     * Filter berdasarkan rentang tanggal_monitoring (format Y-m-d).
-     * Kosongkan kedua parameter untuk export SELURUH data tanpa filter.
-     */
-    public function getForExport(string $tglAwal = '', string $tglAkhir = ''): array
-    {
-        $sql = "SELECT m.*,
-                       p.nama_lokal, p.nama_latin, p.nama_jalan, p.kelurahan, p.kecamatan,
-                       u.Name AS petugas_name, u.Username AS petugas_username
-                FROM monitoring m
-                LEFT JOIN pohon p ON p.id = m.pohon_id
-                LEFT JOIN t_users u ON u.UserId = m.user_id";
-
-        $conditions = [];
-        $params     = [];
-
-        if ($tglAwal !== '' && $tglAkhir !== '') {
-            $conditions[] = "DATE(m.tanggal_monitoring) BETWEEN :tgl_awal AND :tgl_akhir";
-            $params[':tgl_awal']  = $tglAwal;
-            $params[':tgl_akhir'] = $tglAkhir;
-        } elseif ($tglAwal !== '') {
-            $conditions[] = "DATE(m.tanggal_monitoring) >= :tgl_awal";
-            $params[':tgl_awal'] = $tglAwal;
-        } elseif ($tglAkhir !== '') {
-            $conditions[] = "DATE(m.tanggal_monitoring) <= :tgl_akhir";
-            $params[':tgl_akhir'] = $tglAkhir;
-        }
-
-        if (!empty($conditions)) {
-            $sql .= " WHERE " . implode(' AND ', $conditions);
-        }
-
-        $sql .= " ORDER BY m.tanggal_monitoring DESC, m.id DESC";
-
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    /**
      * Upload & simpan banyak file (foto/video) untuk satu monitoring_id.
      * Menerima struktur asli $_FILES['files'] (single ataupun multiple).
      */

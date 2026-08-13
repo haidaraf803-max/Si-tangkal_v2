@@ -11,58 +11,22 @@ $adminName  = htmlspecialchars($_SESSION['admin']['Name'] ?? 'Admin');
 $adminType  = htmlspecialchars($_SESSION['admin']['Type'] ?? 'Administrator');
 $activePage = $activePage ?? '';
 
-// Daftar menu utama
-$menuItems = [
-    [
-        'href'  => 'index.php',
-        'icon'  => 'bi-speedometer2',
-        'label' => 'Dashboard',
-        'key'   => 'dashboard',
-    ],
-    [
-        'href'  => 'pengajuan.php',
-        'icon'  => 'bi-file-earmark-text',
-        'label' => 'Pengajuan Pemangkasan Pohon',
-        'key'   => 'pengajuan',
-    ],
-    [
-        'href'  => 'permohonan_bibit.php',
-        'icon'  => 'bi-flower1',
-        'label' => 'Permohonan Bibit Tanaman',
-        'key'   => 'permohonan_bibit',
-    ],
-    [
-        'href'  => 'pohon.php',
-        'icon'  => 'bi-tree',
-        'label' => 'Kondisi Pohon',
-        'key'   => 'pohon',
-    ],
-    [
-        'href'  => 'stok_bibit.php',
-        'icon'  => 'bi-box-seam',
-        'label' => 'Stok Bibit',
-        'key'   => 'stok_bibit',
-    ],
-    [
-        'href'  => 'monitoring.php',
-        'icon'  => 'bi-display',
-        'label' => 'Monitoring',
-        'key'   => 'monitoring',
-    ],
-    [
-        'href'  => 'users.php',
-        'icon'  => 'bi-people',
-        'label' => 'Manajemen Pengguna',
-        'key'   => 'users',
-    ],
-    
-    [
-        'href'  => 'map.php',
-        'icon'  => 'bi bi-map',
-        'label' => 'Peta',
-        'key'   => 'map',
-    ]
-];
+// ===== MENU DINAMIS BERBASIS RBAC =====
+// Sidebar sekarang mengikuti tabel `menus` + `role_menu_access`
+// (lihat Admin/core/Rbac.php & db/migration_rbac.sql), bukan array
+// statis lagi — supaya menu yang tidak diizinkan untuk peran user
+// otomatis tidak tampil (mis. Pelapor Pemangkasan tidak melihat
+// Manajemen Pengguna / Stok Bibit).
+require_once __DIR__ . '/../core/Rbac.php';
+
+$menuItems = array_map(function ($m) {
+    return [
+        'href'  => $m['url'],
+        'icon'  => $m['icon'],
+        'label' => $m['label'],
+        'key'   => $m['code'],
+    ];
+}, Rbac::accessibleMenus($config));
 ?>
 
 <!-- Sidebar Overlay for Mobile -->
@@ -179,11 +143,48 @@ $menuItems = [
             <i class="bi <?= $menuItems[array_search($activePage, array_column($menuItems, 'key'))] ['icon'] ?? 'bi-house' ?> me-2 text-success"></i>
             <?= $pageTitle ?? 'Dashboard' ?>
         </span>
-        <!-- Topbar Right: Date -->
-        <small class="text-muted d-none d-md-block">
-            <i class="bi bi-calendar3 me-1"></i>
-            <?= date('l, d F Y') ?>
-        </small>
+        <!-- Topbar Right: Notifikasi + Tanggal -->
+        <div class="d-flex align-items-center gap-3">
+            <?php
+            require_once __DIR__ . '/../core/NotificationModel.php';
+            $notifModel   = new NotificationModel($config);
+            $notifUserId  = (int) ($_SESSION['admin']['UserId'] ?? 0);
+            $notifRoleId  = Rbac::currentRoleId($config);
+            $notifUnread  = $notifModel->countUnread($notifUserId, $notifRoleId);
+            $notifItems   = $notifModel->getForUser($notifUserId, $notifRoleId, 8);
+            ?>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light border position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-bell"></i>
+                    <?php if ($notifUnread > 0): ?>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.6rem;">
+                        <?= $notifUnread > 9 ? '9+' : $notifUnread ?>
+                    </span>
+                    <?php endif; ?>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end p-0" style="width:320px; max-height:400px; overflow-y:auto;">
+                    <div class="px-3 py-2 border-bottom fw-600" style="font-size:0.8rem;">Notifikasi</div>
+                    <?php if (empty($notifItems)): ?>
+                    <div class="px-3 py-4 text-center text-muted" style="font-size:0.8rem;">Belum ada notifikasi</div>
+                    <?php else: ?>
+                        <?php foreach ($notifItems as $n): ?>
+                        <a href="<?= htmlspecialchars($n['link'] ?: '#') ?>"
+                           class="dropdown-item py-2 px-3 border-bottom <?= $n['is_read'] ? '' : 'bg-success-subtle' ?>"
+                           style="white-space:normal; font-size:0.78rem;"
+                           onclick="fetch('../api/notifications/mark_read.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: <?= (int) $n['id'] ?>}), keepalive:true});">
+                            <div class="fw-600"><?= htmlspecialchars($n['title']) ?></div>
+                            <div class="text-muted"><?= htmlspecialchars($n['message']) ?></div>
+                            <div class="text-muted" style="font-size:0.68rem;"><?= htmlspecialchars(date('d M Y H:i', strtotime($n['created_at']))) ?></div>
+                        </a>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <small class="text-muted d-none d-md-block">
+                <i class="bi bi-calendar3 me-1"></i>
+                <?= date('l, d F Y') ?>
+            </small>
+        </div>
     </div>
 
     <!-- Main Content area opened here; closed in footer.php -->

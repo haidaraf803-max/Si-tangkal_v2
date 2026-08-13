@@ -6,6 +6,8 @@ require_once __DIR__ . '/../config.php';
 
 // ===== AUTH CHECK (login SELALU di /login.php, di luar folder) =====
 Auth::requireLogin('../login.php');
+require_once 'core/Rbac.php';
+Rbac::requireAccess($config, 'dashboard', 'view');
 require_once 'core/functions.php';
 
 // ===== AMBIL DATA DASHBOARD =====

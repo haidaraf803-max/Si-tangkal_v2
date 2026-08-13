@@ -6,6 +6,11 @@ require_once __DIR__ . '/../config.php';
 
 // ===== AUTH CHECK (login SELALU di /login.php, di luar folder) =====
 Auth::requireLogin('../login.php');
+require_once 'core/Rbac.php';
+Rbac::requireAccess($config, 'monitoring', 'view');
+$canCreateMonitoring = Rbac::can($config, 'monitoring', 'create');
+$canEditMonitoring   = Rbac::can($config, 'monitoring', 'edit');
+$canDeleteMonitoring = Rbac::can($config, 'monitoring', 'delete');
 require_once 'core/MonitoringModel.php';
 
 $model     = new MonitoringModel($config);
@@ -16,6 +21,7 @@ $currentUserId = (int) ($_SESSION['admin']['UserId'] ?? 0);
 
 // ===== DELETE =====
 if (isset($_GET['hapus'])) {
+    if (!$canDeleteMonitoring) { header('Location: ' . basename(__FILE__) . '?deleted=forbidden'); exit; }
     $hapusId = (int) $_GET['hapus'];
     $result  = $model->delete($hapusId);
     header("Location: monitoring.php?deleted=" . ($result['success'] ? '1' : '0'));
@@ -23,12 +29,20 @@ if (isset($_GET['hapus'])) {
 }
 
 if (isset($_GET['deleted'])) {
-    $alertMsg  = $_GET['deleted'] == '1' ? 'Data monitoring berhasil dihapus.' : 'Gagal menghapus data monitoring.';
-    $alertType = $_GET['deleted'] == '1' ? 'success' : 'danger';
+    if ($_GET['deleted'] === 'forbidden') {
+        $alertMsg  = 'Peran Anda tidak memiliki izin menghapus data monitoring.';
+        $alertType = 'warning';
+    } else {
+        $alertMsg  = $_GET['deleted'] == '1' ? 'Data monitoring berhasil dihapus.' : 'Gagal menghapus data monitoring.';
+        $alertType = $_GET['deleted'] == '1' ? 'success' : 'danger';
+    }
 }
 
 // ===== CREATE =====
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create' && !$canCreateMonitoring) {
+    $alertMsg  = 'Peran Anda tidak memiliki izin menambah data monitoring.';
+    $alertType = 'warning';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create') {
 
     $pohon_id             = (int) ($_POST['pohon_id'] ?? 0);
     $tanggal_monitoring   = trim($_POST['tanggal_monitoring'] ?? '');
@@ -82,10 +96,13 @@ require_once 'layouts/sidebar.php';
         <h4 class="fw-bold mb-1">Monitoring Pohon</h4>
         <p class="text-muted mb-0" style="font-size:0.8rem;">Kelola riwayat monitoring kondisi pohon beserta dokumentasi foto/video</p>
     </div>
-    <div>
-        <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalExportMonitoring">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-        </button>
+    <div class="d-flex gap-2 flex-wrap">
+        <?php
+            $exportModul        = 'monitoring';
+            $exportLabel        = 'Data Monitoring';
+            $exportSupportsDate = true;
+            require 'layouts/export_modal.php';
+        ?>
         <!-- <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTambah">
             <i class="bi bi-plus-lg me-1"></i> Tambah Monitoring
         </button> -->
@@ -256,15 +273,19 @@ require_once 'layouts/sidebar.php';
                                    class="btn btn-sm btn-outline-info" title="Detail">
                                     <i class="bi bi-info"></i>
                                 </a>
+                                <?php if ($canEditMonitoring): ?>
                                 <a href="edit_monitoring.php?id=<?= (int) $row['id'] ?>"
                                    class="btn btn-sm btn-outline-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                <?php endif; ?>
+                                <?php if ($canDeleteMonitoring): ?>
                                 <a href="monitoring.php?hapus=<?= (int) $row['id'] ?>"
                                    class="btn btn-sm btn-outline-danger" title="Hapus"
                                    onclick="return confirm('Yakin ingin menghapus data monitoring ini beserta seluruh medianya?')">
                                     <i class="bi bi-trash"></i>
                                 </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -429,63 +450,6 @@ require_once 'layouts/sidebar.php';
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i>Simpan</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- ======= MODAL: EXPORT CSV DATA MONITORING ======= -->
-<div class="modal fade" id="modalExportMonitoring" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="GET" action="export_monitoring.php" target="_blank">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Data Monitoring (CSV)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <label class="form-label fw-semibold">Pilihan Data</label>
-
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="mode" id="exportMonAll" value="all" checked
-                               onchange="document.getElementById('monRangeFields').style.display='none';">
-                        <label class="form-check-label" for="exportMonAll">
-                            Export Seluruh Data Monitoring
-                        </label>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="radio" name="mode" id="exportMonRange" value="range"
-                               onchange="document.getElementById('monRangeFields').style.display='flex';">
-                        <label class="form-check-label" for="exportMonRange">
-                            Export Berdasarkan Rentang Tanggal Monitoring
-                        </label>
-                    </div>
-
-                    <div id="monRangeFields" class="row g-2" style="display:none;">
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_awal">Dari Tanggal</label>
-                            <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_akhir">Sampai Tanggal</label>
-                            <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text">
-                                Kosongkan salah satu jika ingin membatasi hanya dari/sampai tanggal tertentu saja.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-download me-1"></i> Export CSV
-                    </button>
                 </div>
             </form>
         </div>

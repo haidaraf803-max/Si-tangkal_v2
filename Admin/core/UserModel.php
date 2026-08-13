@@ -18,15 +18,17 @@ class UserModel
 
     public function getAll(string $keyword = ''): array
     {
-        $sql = "SELECT * FROM t_users";
+        $sql = "SELECT u.*, r.name AS role_name, r.code AS role_code
+                FROM t_users u
+                LEFT JOIN roles r ON r.id = u.role_id";
         $params = [];
 
         if ($keyword !== '') {
-            $sql .= " WHERE Username LIKE :kw OR Name LIKE :kw OR Email LIKE :kw OR Type LIKE :kw";
+            $sql .= " WHERE u.Username LIKE :kw OR u.Name LIKE :kw OR u.Email LIKE :kw OR u.Type LIKE :kw";
             $params[':kw'] = "%{$keyword}%";
         }
 
-        $sql .= " ORDER BY UserId DESC";
+        $sql .= " ORDER BY u.UserId DESC";
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute($params);
@@ -52,11 +54,16 @@ class UserModel
         return (int) $stmt->fetchColumn() > 0;
     }
 
-    public function create(string $username, string $password, string $email, string $type, string $name): bool
+    /**
+     * $roleId: id dari tabel `roles` (RBAC). $type tetap disimpan sebagai
+     * label tampilan (kompatibilitas kode lama yang membaca t_users.Type),
+     * otomatis diselaraskan dengan nama role di Admin/users.php.
+     */
+    public function create(string $username, string $password, string $email, string $type, string $name, ?int $roleId = null): bool
     {
         $stmt = $this->conn->prepare(
-            "INSERT INTO t_users (Username, Password, Email, Type, Name, CreatedDate)
-             VALUES (:username, :password, :email, :type, :name, NOW())"
+            "INSERT INTO t_users (Username, Password, Email, Type, Name, role_id, CreatedDate)
+             VALUES (:username, :password, :email, :type, :name, :role_id, NOW())"
         );
 
         return $stmt->execute([
@@ -65,17 +72,18 @@ class UserModel
             ':email'    => $email,
             ':type'     => $type,
             ':name'     => $name,
+            ':role_id'  => $roleId,
         ]);
     }
 
     /**
      * Update data user. Jika $password kosong, password lama tidak diubah.
      */
-    public function update(int $id, string $username, string $password, string $email, string $type, string $name): bool
+    public function update(int $id, string $username, string $password, string $email, string $type, string $name, ?int $roleId = null): bool
     {
         if ($password !== '') {
             $stmt = $this->conn->prepare(
-                "UPDATE t_users SET Username = :username, Password = :password, Email = :email, Type = :type, Name = :name
+                "UPDATE t_users SET Username = :username, Password = :password, Email = :email, Type = :type, Name = :name, role_id = :role_id
                  WHERE UserId = :id"
             );
             return $stmt->execute([
@@ -84,12 +92,13 @@ class UserModel
                 ':email'    => $email,
                 ':type'     => $type,
                 ':name'     => $name,
+                ':role_id'  => $roleId,
                 ':id'       => $id,
             ]);
         }
 
         $stmt = $this->conn->prepare(
-            "UPDATE t_users SET Username = :username, Email = :email, Type = :type, Name = :name
+            "UPDATE t_users SET Username = :username, Email = :email, Type = :type, Name = :name, role_id = :role_id
              WHERE UserId = :id"
         );
         return $stmt->execute([
@@ -97,6 +106,7 @@ class UserModel
             ':email'    => $email,
             ':type'     => $type,
             ':name'     => $name,
+            ':role_id'  => $roleId,
             ':id'       => $id,
         ]);
     }

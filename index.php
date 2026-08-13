@@ -7,8 +7,6 @@ $totalSehat = $pohonModel->countByKondisi('Sehat');
 $totalKurangBaik = $pohonModel->countByKondisi('Kurang Sehat');
 $totalMati = $pohonModel->countByKondisi('Sakit');
 
-// Catatan: Informasi Stok Bibit SENGAJA TIDAK ditampilkan di halaman
-// utama (beranda). Data stok bibit tetap bisa dikelola lewat Admin.
 ?>
 <?php
 $pageTitle = 'Si-TANGKAL - Kota Cimahi';

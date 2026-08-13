@@ -2,38 +2,21 @@
 require_once __DIR__ . '/includes/config.php';
 // Auth sudah otomatis dimuat oleh config.php di atas (lihat includes/auth.php)
 
-/**
- * Ambil & validasi tujuan redirect setelah login supaya pengguna
- * dikembalikan ke halaman asal (mis. Pengajuan.php). Hanya path
- * relatif lokal yang diizinkan (bukan URL luar) untuk mencegah
- * open-redirect.
- */
-function sitangkalSafeRedirect(?string $target): ?string
-{
-    if (!$target) {
-        return null;
-    }
-    $target = trim($target);
-    // Tolak URL absolut / protokol-relatif (mis. http://, https://, //host)
-    if ($target === '' || str_starts_with($target, '//') || preg_match('#^[a-zA-Z][a-zA-Z0-9+.-]*://#', $target)) {
-        return null;
-    }
-    // Hanya izinkan path relatif sederhana di dalam aplikasi
-    if (!preg_match('#^[A-Za-z0-9_\-./?=&%]+$#', $target)) {
-        return null;
-    }
-    return $target;
+// Halaman tujuan setelah login berhasil. Hanya menerima path lokal
+// (file .php di dalam project ini) supaya tidak disalahgunakan untuk
+// open-redirect ke situs lain.
+$redirectTarget = 'Admin/index.php';
+$redirectParam  = $_GET['redirect'] ?? $_POST['redirect'] ?? '';
+if ($redirectParam !== '' && preg_match('/^[A-Za-z0-9_\-\/]+\.php$/', $redirectParam)) {
+    $redirectTarget = $redirectParam;
 }
-
-$redirectTarget = sitangkalSafeRedirect($_POST['redirect'] ?? $_GET['redirect'] ?? null);
-$redirectTo     = $redirectTarget ?: 'Admin/index.php';
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
     if (Auth::attempt($username, $password)) {
-        header('Location: ' . $redirectTo);
+        header('Location: ' . $redirectTarget);
         exit;
     } else {
         $error = 'Username atau password salah.';
@@ -41,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (Auth::isLoggedIn()) {
-    header('Location: ' . $redirectTo);
+    header('Location: ' . $redirectTarget);
     exit;
 }
 
@@ -73,9 +56,6 @@ $pageTitle = 'Login';
         <?php endif; ?>
 
         <form method="post">
-            <?php if ($redirectTarget): ?>
-            <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirectTarget) ?>">
-            <?php endif; ?>
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" placeholder="Masukkan username" required autofocus>

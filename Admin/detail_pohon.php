@@ -24,6 +24,9 @@ if (!$data) {
 }
 
 $isDone   = (strtolower($data['keterangan'] ?? '') === 'sudah');
+require_once 'core/Rbac.php';
+Rbac::requireAccess($config, 'pohon', 'view');
+$histori    = $model->getHistori($id);
 $pageTitle  = 'Detail Kondisi Pohon';
 $activePage = 'pohon';
 require_once 'layouts/header.php';
@@ -203,6 +206,47 @@ require_once 'layouts/sidebar.php';
 
             </div><!-- /.card-body -->
         </div><!-- /.card -->
+
+        <!-- ======= RIWAYAT PERUBAHAN KONDISI (AUDIT TRAIL) ======= -->
+        <div class="card mt-3">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-clock-history text-secondary"></i>
+                <strong>Riwayat Perubahan Kondisi</strong>
+                <span class="badge bg-secondary ms-1"><?= count($histori) ?></span>
+            </div>
+            <div class="card-body">
+                <?php if (empty($histori)): ?>
+                <p class="text-muted mb-0" style="font-size:0.85rem;">
+                    Belum ada riwayat perubahan &mdash; data ini akan otomatis tercatat setiap kali data pohon diedit.
+                </p>
+                <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Tanggal Diubah</th>
+                                <th>Kondisi (sebelum diubah)</th>
+                                <th>Umur Pohon</th>
+                                <th>Keterangan</th>
+                                <th>Diubah Oleh</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($histori as $h): ?>
+                            <tr>
+                                <td class="text-muted"><?= htmlspecialchars(date('d M Y H:i', strtotime($h['diubah_pada']))) ?></td>
+                                <td><?= htmlspecialchars($h['kondisi_kesehatan'] ?? '-') ?></td>
+                                <td><?= htmlspecialchars($h['umur_pohon'] ?? '-') ?></td>
+                                <td style="max-width:220px;"><?= nl2br(htmlspecialchars($h['keterangan'] ?? '-')) ?></td>
+                                <td><?= htmlspecialchars($h['diubah_oleh_nama'] ?? '—') ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
 
     </div>
 </div>

@@ -6,12 +6,21 @@ require_once __DIR__ . '/../config.php';
 
 // ===== AUTH CHECK (login SELALU di /login.php, di luar folder) =====
 Auth::requireLogin('../login.php');
+require_once 'core/Rbac.php';
+Rbac::requireAccess($config, 'permohonan_bibit', 'view');
+$canCreateBibit = Rbac::can($config, 'permohonan_bibit', 'create');
+$canEditBibit   = Rbac::can($config, 'permohonan_bibit', 'edit');
+$canDeleteBibit = Rbac::can($config, 'permohonan_bibit', 'delete');
 
 $alertMsg  = '';
 $alertType = '';
 
 // ===== PROSES TANGGAPI (UPDATE STATUS & KETERANGAN) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tanggapi') {
+    if (!$canEditBibit) {
+        $alertMsg  = 'Peran Anda tidak memiliki izin menanggapi permohonan bibit.';
+        $alertType = 'warning';
+    } else {
     $id         = (int) ($_POST['id_bibit'] ?? 0);
     $status     = trim($_POST['status_permohonan'] ?? '');
     $keterangan = trim($_POST['keterangan'] ?? '');
@@ -36,10 +45,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $alertMsg  = 'Data tidak valid. Pastikan status yang dipilih benar.';
         $alertType = 'warning';
     }
+    }
 }
 
 // ===== PROSES HAPUS =====
 if (isset($_GET['hapus'])) {
+    if (!$canDeleteBibit) {
+        header('Location: permohonan_bibit.php?deleted=forbidden');
+        exit;
+    }
     $hapusId = (int) $_GET['hapus'];
     if ($hapusId > 0) {
         try {
@@ -56,8 +70,13 @@ if (isset($_GET['hapus'])) {
 
 // Alert dari redirect hapus
 if (isset($_GET['deleted'])) {
-    $alertMsg  = $_GET['deleted'] == '1' ? 'Data permohonan bibit berhasil dihapus.' : 'Gagal menghapus data.';
-    $alertType = $_GET['deleted'] == '1' ? 'success' : 'danger';
+    if ($_GET['deleted'] === 'forbidden') {
+        $alertMsg  = 'Peran Anda tidak memiliki izin menghapus permohonan bibit.';
+        $alertType = 'warning';
+    } else {
+        $alertMsg  = $_GET['deleted'] == '1' ? 'Data permohonan bibit berhasil dihapus.' : 'Gagal menghapus data.';
+        $alertType = $_GET['deleted'] == '1' ? 'success' : 'danger';
+    }
 }
 
 // ===== AMBIL SEMUA DATA =====
@@ -78,15 +97,18 @@ require_once 'layouts/sidebar.php';
 ?>
 
 <!-- ======= PAGE HEADING ======= -->
-<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+<div class="d-flex align-items-center justify-content-between mb-4">
     <div>
         <h4 class="fw-bold mb-1" style="color:var(--text-primary);">Permohonan Bibit Tanaman</h4>
         <p class="text-muted mb-0" style="font-size:0.8rem;">Kelola semua permohonan bibit tanaman dari masyarakat</p>
     </div>
-    <div class="d-flex align-items-center gap-2">
-        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalExportBibit">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-        </button>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <?php
+            $exportModul        = 'permohonan_bibit';
+            $exportLabel        = 'Permohonan Bibit';
+            $exportSupportsDate = true;
+            require 'layouts/export_modal.php';
+        ?>
         <span class="badge rounded-pill" style="background:var(--accent-light); color:#0d7a3e; font-size:0.75rem; padding:0.45em 0.9em;">
             <i class="bi bi-flower1 me-1"></i> <?= count($data) ?> Data
         </span>
@@ -169,6 +191,7 @@ require_once 'layouts/sidebar.php';
                                 </span>
                             </td>
                             <td class="text-center pe-3" style="white-space:nowrap;">
+                                <?php if ($canEditBibit): ?>
                                 <!-- Tombol Tanggapi -->
                                 <button type="button"
                                         class="btn btn-sm btn-outline-primary me-1"
@@ -184,6 +207,8 @@ require_once 'layouts/sidebar.php';
                                         data-keterangan="<?= htmlspecialchars($row['keterangan'] ?? '') ?>">
                                     <i class="bi bi-chat-left-text"></i>
                                 </button>
+                                <?php endif; ?>
+                                <?php if ($canDeleteBibit): ?>
                                 <!-- Tombol Hapus -->
                                 <a href="permohonan_bibit.php?hapus=<?= (int)$row['id_bibit'] ?>"
                                    class="btn btn-sm btn-outline-danger"
@@ -191,6 +216,7 @@ require_once 'layouts/sidebar.php';
                                    onclick="return confirm('Yakin ingin menghapus permohonan dari <?= htmlspecialchars(addslashes($row['nama_pemohon'])) ?>?')">
                                     <i class="bi bi-trash"></i>
                                 </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -299,62 +325,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-
-<!-- ======= MODAL: EXPORT CSV DATA PERMOHONAN BIBIT ======= -->
-<div class="modal fade" id="modalExportBibit" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="GET" action="export_permohonan_bibit.php" target="_blank">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Data Permohonan Bibit (CSV)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <label class="form-label fw-semibold">Pilihan Data</label>
-
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="mode" id="exportBibitAll" value="all" checked
-                               onchange="document.getElementById('bibitRangeFields').style.display='none';">
-                        <label class="form-check-label" for="exportBibitAll">
-                            Export Seluruh Data Permohonan Bibit
-                        </label>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="radio" name="mode" id="exportBibitRange" value="range"
-                               onchange="document.getElementById('bibitRangeFields').style.display='flex';">
-                        <label class="form-check-label" for="exportBibitRange">
-                            Export Berdasarkan Tanggal Permohonan
-                        </label>
-                    </div>
-
-                    <div id="bibitRangeFields" class="row g-2" style="display:none;">
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_awal">Dari Tanggal</label>
-                            <input type="date" id="tanggal_awal" name="tanggal_awal" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="tanggal_akhir">Sampai Tanggal</label>
-                            <input type="date" id="tanggal_akhir" name="tanggal_akhir" class="form-control">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-text">
-                                Kosongkan salah satu jika ingin membatasi hanya dari/sampai tanggal tertentu saja.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-download me-1"></i> Export CSV
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <?php require_once 'layouts/footer.php'; ?>

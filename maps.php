@@ -70,7 +70,7 @@ $stats = TreeRepository::stats();
         <!-- Group: Basemap (jenis peta dasar) -->
         <div class="layer-group" id="group-basemap">
             <div class="layer-group-header" onclick="toggleLayerGroup('group-basemap')">
-                <span>Basemaps</span>
+                <span>Jenis Peta</span>
                 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div class="layer-group-body">
@@ -312,6 +312,12 @@ $stats = TreeRepository::stats();
 
 <script>window.__sitangkalStats = <?= json_encode($stats) ?>;</script>
 <script>window.SITANGKAL_LOGGED_IN = <?= (class_exists('Auth') && Auth::isLoggedIn()) ? 'true' : 'false' ?>;</script>
+<script>
+    // Konfigurasi basemap dari config.php (satu-satunya sumber),
+    // dibaca oleh assets/js/map.js — lihat BASEMAP_CONFIG di config.php.
+    window.SITANGKAL_BASEMAPS = <?= json_encode(BASEMAP_CONFIG) ?>;
+    window.SITANGKAL_DEFAULT_BASEMAP = <?= json_encode(DEFAULT_BASEMAP) ?>;
+</script>
 
 <!-- Tambah Monitoring modal — dipicu dari tombol "+ Monitoring" di modal
      Detail Pohon (lihat renderTreeDetail() di ui.js). Hanya bisa dipakai
