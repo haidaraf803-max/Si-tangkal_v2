@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "SITANGKAL API",
-    "description": "Dokumentasi API Monitoring Pohon",
-    "version": "1.0.1"
+    "description": "Dokumentasi API Monitoring Pohon (lengkap dengan modul RBAC, pengajuan, pemeliharaan, dan notifikasi)",
+    "version": "1.1.0"
   },
   "servers": [
     {
@@ -1004,6 +1004,1900 @@
           },
           "500": {
             "description": "Data pohon tidak ditemukan / kesalahan server"
+          }
+        }
+      }
+    },
+    "/menus/list.php": {
+      "get": {
+        "tags": [
+          "Menus"
+        ],
+        "summary": "Daftar Menu (untuk navigasi & matriks role)",
+        "description": "Tanpa parameter: daftar semua menu (butuh izin view menu `roles`, dipakai halaman Manajemen Role). Dengan `?mine=1`: hanya menu yang boleh diakses user yang sedang login (dipakai membangun navigasi aplikasi).",
+        "parameters": [
+          {
+            "name": "mine",
+            "in": "query",
+            "required": false,
+            "description": "Jika diisi (mis. 1), hanya kembalikan menu yang bisa diakses user login",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar Menu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login"
+          },
+          "403": {
+            "description": "Tidak memiliki izin melihat daftar menu"
+          }
+        }
+      }
+    },
+    "/notifications/list.php": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Daftar Notifikasi Milik User Login",
+        "description": "Mengembalikan jumlah notifikasi belum dibaca (`unread`) beserta daftar notifikasi untuk user & role yang sedang login.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Jumlah maksimum notifikasi yang diambil (default 10)",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar Notifikasi",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "unread": {
+                      "type": "integer",
+                      "example": 3
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login"
+          }
+        }
+      }
+    },
+    "/notifications/mark_read.php": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Tandai Notifikasi Sudah Dibaca",
+        "description": "Isi `id` untuk menandai 1 notifikasi, atau `all=1` untuk menandai semua notifikasi milik user & role yang sedang login sebagai sudah dibaca.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "ID notifikasi (wajib jika `all` tidak diisi)"
+                  },
+                  "all": {
+                    "type": "integer",
+                    "enum": [
+                      1
+                    ],
+                    "description": "Isi 1 untuk menandai semua notifikasi sudah dibaca"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Belum login"
+          },
+          "422": {
+            "description": "id atau all wajib diisi"
+          }
+        }
+      }
+    },
+    "/pengajuan/survey.php": {
+      "post": {
+        "tags": [
+          "Pengajuan"
+        ],
+        "summary": "Isi Hasil Survey Pengajuan",
+        "description": "Khusus role `petugas_survey` (atau superadmin). Mengisi hasil survey lapangan untuk sebuah pengajuan.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "hasil_survey": {
+                    "type": "string",
+                    "enum": [
+                      "perlu_pemangkasan",
+                      "tidak_perlu"
+                    ]
+                  },
+                  "catatan_survey": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hasil survey tersimpan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Hanya Petugas Survey yang boleh mengisi hasil survey"
+          },
+          "422": {
+            "description": "id wajib diisi"
+          }
+        }
+      }
+    },
+    "/pengajuan/validate.php": {
+      "post": {
+        "tags": [
+          "Pengajuan"
+        ],
+        "summary": "Validasi Pengajuan (Setuju/Tolak)",
+        "description": "Khusus role `validator` (atau superadmin). Menyetujui atau menolak pengajuan berdasarkan hasil survey.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "keputusan": {
+                    "type": "string",
+                    "enum": [
+                      "setuju",
+                      "tolak"
+                    ]
+                  },
+                  "catatan_validasi": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validasi tersimpan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Hanya Validator yang boleh melakukan validasi"
+          },
+          "422": {
+            "description": "id wajib diisi"
+          }
+        }
+      }
+    },
+    "/pengajuan/eksekusi.php": {
+      "post": {
+        "tags": [
+          "Pengajuan"
+        ],
+        "summary": "Unggah Dokumentasi Eksekusi Pengajuan",
+        "description": "Khusus role `tim_tangkas` (atau superadmin). Mengunggah foto sebelum/sesudah eksekusi sekaligus menandai pengajuan selesai.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "foto_sebelum": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "foto_sesudah": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dokumentasi eksekusi tersimpan, pengajuan selesai",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Hanya Tim Tangkas yang boleh mengunggah dokumentasi eksekusi"
+          },
+          "422": {
+            "description": "id wajib diisi"
+          }
+        }
+      }
+    },
+    "/pergantian/index.php": {
+      "get": {
+        "tags": [
+          "Pergantian Pohon"
+        ],
+        "summary": "Ambil Semua atau Detail Perhitungan Pergantian Pohon",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID perhitungan pergantian, untuk mengambil 1 data detail"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data Pergantian Pohon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tidak memiliki izin"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Pergantian Pohon"
+        ],
+        "summary": "Hitung & Simpan Kompensasi Pergantian Pohon",
+        "description": "Menghitung nilai kompensasi berdasarkan jenis pohon, diameter, dan jumlah pohon, lalu menyimpan hasilnya.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "jenis_pohon",
+                  "diameter_cm",
+                  "jumlah_pohon"
+                ],
+                "properties": {
+                  "jenis_pohon": {
+                    "type": "string"
+                  },
+                  "diameter_cm": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "jumlah_pohon": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Perhitungan tersimpan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "jenis_pohon, diameter_cm, dan jumlah_pohon wajib diisi"
+          },
+          "500": {
+            "description": "Gagal menyimpan perhitungan"
+          }
+        }
+      }
+    },
+    "/pergantian/delete.php": {
+      "get": {
+        "tags": [
+          "Pergantian Pohon"
+        ],
+        "summary": "Hapus Data Pergantian Pohon",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil dihapus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "id wajib diisi"
+          }
+        }
+      }
+    },
+    "/pohon/history.php": {
+      "get": {
+        "tags": [
+          "Pohon"
+        ],
+        "summary": "Riwayat Perubahan Data Pohon",
+        "description": "Mengembalikan histori perubahan (audit trail) untuk 1 pohon tertentu.",
+        "parameters": [
+          {
+            "name": "pohon_id",
+            "in": "query",
+            "required": true,
+            "description": "ID pohon",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Riwayat Pohon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "pohon_id wajib diisi"
+          }
+        }
+      }
+    },
+    "/tree-detail.php": {
+      "get": {
+        "tags": [
+          "Pohon"
+        ],
+        "summary": "Detail 1 Pohon (untuk popup peta)",
+        "description": "Mengembalikan detail lengkap 1 pohon melalui TreeRepository::find(), field-nya konsisten dengan halaman detail pohon versi penuh.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID pohon"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail Pohon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "tree": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data pohon tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/pohon_pending/create.php": {
+      "post": {
+        "tags": [
+          "Pohon Pending"
+        ],
+        "summary": "Ajukan Data Pohon Baru (Staging)",
+        "description": "Data disimpan ke staging (`pohon_pending`, status `pending`), belum masuk ke tabel `pohon`. Gunakan `/pohon_pending/validate.php` untuk memindahkannya ke tabel pohon.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "nama_lokal",
+                  "kesehatan",
+                  "nama_jalan",
+                  "koordinat_x",
+                  "koordinat_y"
+                ],
+                "properties": {
+                  "no_pohon": {
+                    "type": "integer"
+                  },
+                  "nama_lokal": {
+                    "type": "string"
+                  },
+                  "nama_latin": {
+                    "type": "string"
+                  },
+                  "family": {
+                    "type": "string"
+                  },
+                  "tahun_tanam": {
+                    "type": "string"
+                  },
+                  "habitus": {
+                    "type": "string"
+                  },
+                  "status_kel": {
+                    "type": "string"
+                  },
+                  "volume": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "kelas_awet": {
+                    "type": "string"
+                  },
+                  "kelas_kuat": {
+                    "type": "string"
+                  },
+                  "berat_jenis": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "kesehatan": {
+                    "type": "string",
+                    "enum": [
+                      "Sehat",
+                      "Kurang Sehat",
+                      "Sakit"
+                    ]
+                  },
+                  "serapan_co": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "produksi_o": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "nama_jalan": {
+                    "type": "string"
+                  },
+                  "kelurahan": {
+                    "type": "string"
+                  },
+                  "kecamatan": {
+                    "type": "string"
+                  },
+                  "koordinat_x": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "longitude"
+                  },
+                  "koordinat_y": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "latitude"
+                  },
+                  "keterangan": {
+                    "type": "string"
+                  },
+                  "umur_pohon": {
+                    "type": "string"
+                  },
+                  "foto": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "jpg/jpeg/png/webp"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pengajuan pohon berhasil dikirim & menunggu validasi",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "pending_id": {
+                      "type": "integer"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validasi input gagal (mis. nama_lokal/kesehatan/nama_jalan/koordinat kosong)"
+          }
+        }
+      }
+    },
+    "/pohon_pending/read.php": {
+      "get": {
+        "tags": [
+          "Pohon Pending"
+        ],
+        "summary": "Ambil Data Pending Pohon",
+        "description": "Isi `id` untuk detail 1 baris. Isi `status` (pending|valid|invalid) untuk memfilter berdasarkan status. Tanpa parameter: seluruh baris pending, terbaru dulu.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID data pending, untuk mengambil 1 data detail"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filter status data pending",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "valid",
+                "invalid"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data Pending Pohon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Data pending tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/pohon_pending/validate.php": {
+      "post": {
+        "tags": [
+          "Pohon Pending"
+        ],
+        "summary": "Validasi Data Pending -> Pindahkan ke Tabel Pohon",
+        "description": "Jika lolos aturan validasi, baris dipindahkan ke tabel `pohon` dan status ditandai `valid`. Jika tidak lolos, baris ditandai `invalid` beserta alasannya dan tidak dipindahkan.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Data valid & berhasil dipindahkan ke tabel pohon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id wajib diisi"
+          },
+          "422": {
+            "description": "Data tidak lolos validasi (ditandai invalid)"
+          }
+        }
+      }
+    },
+    "/pohon_pending/reject.php": {
+      "post": {
+        "tags": [
+          "Pohon Pending"
+        ],
+        "summary": "Tolak Data Pending Secara Manual",
+        "description": "Menandai 1 baris data pending sebagai `invalid`, terlepas dari hasil validasi otomatis.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "catatan": {
+                    "type": "string",
+                    "description": "Alasan penolakan"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Data pending berhasil ditolak",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id wajib diisi, atau data tidak ditemukan/sudah divalidasi sebelumnya"
+          }
+        }
+      }
+    },
+    "/pohon_pending/delete.php": {
+      "get": {
+        "tags": [
+          "Pohon Pending"
+        ],
+        "summary": "Hapus Data Pending",
+        "description": "Menghapus 1 baris data pending (staging), tidak menyentuh tabel pohon.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID data pending"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data pending berhasil dihapus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id wajib diisi, atau data pending tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/roles/list.php": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Daftar Role atau Detail Role + Matriks Izin",
+        "description": "Tanpa parameter: daftar semua role beserta jumlah user per role. Dengan `id`: detail 1 role beserta matriks izin (`permissions`) untuk semua menu.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID role, untuk mengambil detail beserta matriks izin"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data Role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Role tidak ditemukan"
+          }
+        }
+      }
+    },
+    "/roles/create.php": {
+      "post": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Tambah Role Baru",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "name"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "Akan dinormalisasi ke huruf kecil & underscore"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role berhasil ditambahkan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Kode role sudah dipakai"
+          },
+          "422": {
+            "description": "code dan name wajib diisi"
+          }
+        }
+      }
+    },
+    "/roles/update.php": {
+      "post": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Update Role",
+        "description": "Bisa memakai method POST atau PUT.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role berhasil diperbarui",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "id dan name wajib diisi"
+          }
+        }
+      }
+    },
+    "/roles/delete.php": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Hapus Role",
+        "description": "Role bawaan sistem (`is_system=1`) atau role yang masih dipakai user lain tidak bisa dihapus.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role berhasil dihapus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Role tidak ditemukan"
+          },
+          "409": {
+            "description": "Role bawaan sistem atau masih dipakai user lain"
+          },
+          "422": {
+            "description": "id wajib diisi"
+          }
+        }
+      }
+    },
+    "/roles/permissions.php": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Ambil Matriks Izin untuk 1 Role",
+        "parameters": [
+          {
+            "name": "role_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matriks Izin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "role_id": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "role_id wajib diisi"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Simpan Matriks Izin untuk 1 Role",
+        "description": "Menyimpan (replace-all) matriks izin per menu untuk sebuah role.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "role_id",
+                  "permissions"
+                ],
+                "properties": {
+                  "role_id": {
+                    "type": "integer"
+                  },
+                  "permissions": {
+                    "type": "object",
+                    "description": "Map menu_id -> { view, create, edit, delete } (0/1)",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "view": {
+                          "type": "integer",
+                          "enum": [
+                            0,
+                            1
+                          ]
+                        },
+                        "create": {
+                          "type": "integer",
+                          "enum": [
+                            0,
+                            1
+                          ]
+                        },
+                        "edit": {
+                          "type": "integer",
+                          "enum": [
+                            0,
+                            1
+                          ]
+                        },
+                        "delete": {
+                          "type": "integer",
+                          "enum": [
+                            0,
+                            1
+                          ]
+                        }
+                      }
+                    },
+                    "example": {
+                      "2": {
+                        "view": 1,
+                        "create": 1,
+                        "edit": 1,
+                        "delete": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matriks izin berhasil disimpan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "role_id atau permissions wajib diisi"
+          }
+        }
+      }
+    },
+    "/bbm/index.php": {
+      "get": {
+        "tags": [
+          "Pemakaian BBM"
+        ],
+        "summary": "Ambil Semua atau Detail Pemakaian BBM",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID pemakaian bbm, untuk mengambil 1 data detail"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data Pemakaian BBM",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tidak memiliki izin"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Pemakaian BBM"
+        ],
+        "summary": "Tambah Data Pemakaian BBM",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "tanggal",
+                  "jenis_bbm",
+                  "jumlah_liter"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "tanggal": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "jenis_bbm": {
+                    "type": "string"
+                  },
+                  "jumlah_liter": {
+                    "type": "number",
+                    "format": "float"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil disimpan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "tanggal, jenis_bbm, jumlah_liter wajib diisi"
+          }
+        }
+      }
+    },
+    "/bbm/delete.php": {
+      "get": {
+        "tags": [
+          "Pemakaian BBM"
+        ],
+        "summary": "Hapus Data Pemakaian BBM",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil dihapus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "id wajib diisi"
+          }
+        }
+      }
+    },
+    "/pupuk/index.php": {
+      "get": {
+        "tags": [
+          "Pemakaian Pupuk"
+        ],
+        "summary": "Ambil Semua atau Detail Pemakaian Pupuk",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID pemakaian pupuk, untuk mengambil 1 data detail"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data Pemakaian Pupuk",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tidak memiliki izin"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Pemakaian Pupuk"
+        ],
+        "summary": "Tambah Data Pemakaian Pupuk",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "tanggal",
+                  "jenis_pupuk",
+                  "lokasi"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "tanggal": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "jenis_pupuk": {
+                    "type": "string"
+                  },
+                  "lokasi": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil disimpan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "tanggal, jenis_pupuk, lokasi wajib diisi"
+          }
+        }
+      }
+    },
+    "/pupuk/delete.php": {
+      "get": {
+        "tags": [
+          "Pemakaian Pupuk"
+        ],
+        "summary": "Hapus Data Pemakaian Pupuk",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil dihapus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "id wajib diisi"
+          }
+        }
+      }
+    },
+    "/sarpras/index.php": {
+      "get": {
+        "tags": [
+          "Sarpras"
+        ],
+        "summary": "Ambil Semua atau Detail Permintaan Sarpras",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID permintaan sarpras, untuk mengambil 1 data detail"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data Permintaan Sarpras",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tidak memiliki izin"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sarpras"
+        ],
+        "summary": "Ajukan Permintaan Sarpras Baru, atau Tanggapi Permintaan",
+        "description": "Default: mengajukan permintaan sarpras baru (butuh izin `create`). Jika `action` diisi `tanggapi`: mengubah status permintaan yang sudah ada (butuh izin `edit`).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "tanggapi"
+                    ],
+                    "description": "Isi 'tanggapi' untuk mengubah status permintaan yang sudah ada"
+                  },
+                  "id": {
+                    "type": "integer",
+                    "description": "Wajib jika action=tanggapi"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Wajib jika action=tanggapi"
+                  },
+                  "catatan_admin": {
+                    "type": "string"
+                  },
+                  "tanggal": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Wajib jika mengajukan permintaan baru"
+                  },
+                  "nama_barang": {
+                    "type": "string",
+                    "description": "Wajib jika mengajukan permintaan baru"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil disimpan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "tanggal dan nama_barang wajib diisi (untuk permintaan baru)"
+          }
+        }
+      }
+    },
+    "/sarpras/delete.php": {
+      "get": {
+        "tags": [
+          "Sarpras"
+        ],
+        "summary": "Hapus Data Permintaan Sarpras",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil dihapus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "id wajib diisi"
+          }
+        }
+      }
+    },
+    "/tarif/index.php": {
+      "get": {
+        "tags": [
+          "Tarif"
+        ],
+        "summary": "Ambil Semua atau Detail Tarif Pergantian Pohon",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID tarif, untuk mengambil 1 data detail"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data Tarif",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tidak memiliki izin"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tarif"
+        ],
+        "summary": "Tambah Tarif Pergantian Pohon",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "jenis_pohon",
+                  "harga_per_cm"
+                ],
+                "properties": {
+                  "jenis_pohon": {
+                    "type": "string"
+                  },
+                  "diameter_min": {
+                    "type": "number",
+                    "format": "float",
+                    "default": 0
+                  },
+                  "diameter_max": {
+                    "type": "number",
+                    "format": "float",
+                    "default": 999
+                  },
+                  "harga_per_cm": {
+                    "type": "number",
+                    "format": "float"
+                  },
+                  "keterangan": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil disimpan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "jenis_pohon dan harga_per_cm wajib diisi"
+          }
+        }
+      }
+    },
+    "/tarif/delete.php": {
+      "get": {
+        "tags": [
+          "Tarif"
+        ],
+        "summary": "Hapus Data Tarif",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil dihapus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "id wajib diisi"
           }
         }
       }

@@ -68,7 +68,7 @@ $stats = TreeRepository::stats();
             <button class="panel-close" onclick="closeLayerPanel()">✕</button>
         </div>
         <!-- Group: Basemap (jenis peta dasar) -->
-        <div class="layer-group" id="group-basemap">
+        <div class="layer-group collapsed" id="group-basemap">
             <div class="layer-group-header" onclick="toggleLayerGroup('group-basemap')">
                 <span>Jenis Peta</span>
                 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -76,12 +76,12 @@ $stats = TreeRepository::stats();
             <div class="layer-group-body">
                 <div class="basemap-options">
                     <label class="basemap-option">
-                        <input type="radio" name="basemap" id="basemap-osm" value="osm" checked>
+                        <input type="radio" name="basemap" id="basemap-osm" value="osm">
                         <span class="basemap-thumb basemap-thumb-osm"></span>
                         <span class="basemap-label">Jalan</span>
                     </label>
                     <label class="basemap-option">
-                        <input type="radio" name="basemap" id="basemap-satellite" value="satellite">
+                        <input type="radio" name="basemap" id="basemap-satellite" value="satellite" checked>
                         <span class="basemap-thumb basemap-thumb-satellite"></span>
                         <span class="basemap-label">Satelit</span>
                     </label>
@@ -100,7 +100,7 @@ $stats = TreeRepository::stats();
         </div>
 
         <!-- Group: Pohon referensi GeoServer (WFS, point vector) -->
-        <div class="layer-group" id="group-geoserver">
+        <div class="layer-group collapsed" id="group-geoserver">
             <div class="layer-group-header" onclick="toggleLayerGroup('group-geoserver')">
                 <span>Referensi GeoServer</span>
                 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -122,7 +122,7 @@ $stats = TreeRepository::stats();
         </div>
 
         <!-- Group: Pohon Database (point vector + cluster, bisa diklik) -->
-        <div class="layer-group" id="group-database">
+        <div class="layer-group collapsed" id="group-database">
             <div class="layer-group-header" onclick="toggleLayerGroup('group-database')">
                 <span>Data Pohon</span>
                 <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>

@@ -110,7 +110,7 @@ define('GEOSERVER_WORKSPACE', 'cimahi');
 // =======================================================
 // BASEMAP CONFIG (dipakai oleh maps.php + assets/js/map.js)
 // =======================================================
-define('DEFAULT_BASEMAP', 'osm');
+define('DEFAULT_BASEMAP', 'satellite');
 define('BASEMAP_CONFIG', [
     'osm' => [
         'url' => 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',

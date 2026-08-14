@@ -232,43 +232,19 @@ async function refreshTreeLayer(overrides) {
     syncTreeLayerVisibility();
     return getVisibleTrees();
 }
-// ---------------- Zoom control positioning ----------------
-const ZOOM_HELP_GAP = 11;
-
-function positionZoomBelowHelp() {
-    const helpButton = document.getElementById('fab-help');
-    const zoomCorner = document.querySelector('#map .leaflet-top.leaflet-left');
-    const zoomControl = document.querySelector('#map .leaflet-control-zoom');
-
-    if (!map || !helpButton || !zoomCorner || !zoomControl) return;
-
-    const helpBox = helpButton.getBoundingClientRect();
-    const mapBox = map.getContainer().getBoundingClientRect();
-    const zoomStyle = window.getComputedStyle(zoomControl);
-
-    const marginTop = parseFloat(zoomStyle.marginTop) || 0;
-    const marginLeft = parseFloat(zoomStyle.marginLeft) || 0;
-
-    zoomCorner.style.top =
-        `${helpBox.bottom - mapBox.top + ZOOM_HELP_GAP - marginTop}px`;
-
-    const helpCenterX = helpBox.left + (helpBox.width / 2);
-    const zoomLeftX = helpCenterX - mapBox.left - (zoomControl.offsetWidth / 2);
-
-    zoomCorner.style.left = `${zoomLeftX - marginLeft}px`;
-
-    zoomCorner.style.right = 'auto';
-    zoomCorner.style.bottom = 'auto';
-}
-
 function initMap() {
     map = L.map('map', {
         center: CIMAHI_CENTER,
         zoom: INITIAL_ZOOM,
-        zoomControl: true,
+        // Kontrol zoom bawaan dimatikan di sini lalu dibuat manual di bawah
+        // dengan posisi 'bottomright', supaya tombol +/- muncul di pojok
+        // kanan bawah peta (bukan default kiri atas Leaflet).
+        zoomControl: false,
         attributionControl: true,
         maxZoom: MAX_MAP_ZOOM,
     });
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // Basemap awal: pakai pilihan terakhir user (tersimpan di localStorage)
     // kalau ada, kalau tidak default ke DEFAULT_BASEMAP dari config.php.
@@ -294,8 +270,6 @@ function initMap() {
         focusTreeFromUrl();
     });
     bindLayerToggles();
-    requestAnimationFrame(positionZoomBelowHelp);
-window.addEventListener('resize', positionZoomBelowHelp);
 }
 
 async function loadAllLayers() {
@@ -773,7 +747,6 @@ function closeTreePopup() {
 
 
 const defaultLayers = [
-    'layer-fotoudara',
     'layer-green',
 ];
 

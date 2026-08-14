@@ -72,7 +72,62 @@ $badgeClass = [
     'ditolak'   => 'bg-danger',
     'selesai'   => 'bg-secondary',
 ];
+$statusIcon = [
+    'diajukan'  => 'bi-hourglass-split',
+    'disetujui' => 'bi-check-circle',
+    'ditolak'   => 'bi-x-circle',
+    'selesai'   => 'bi-flag',
+];
 ?>
+
+<style>
+    /* ===== Modal cantik terpakai bersama (pupuk/bbm/sarpras) — struktur Bootstrap standar, aman dari flex pecah ===== */
+    .modal-nice .modal-content {
+        display: flex !important;
+        flex-direction: column !important;
+        border: 0; border-radius: 18px; overflow: hidden;
+        box-shadow: 0 20px 60px rgba(15,23,42,.18);
+    }
+    .modal-nice .modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); }
+    .modal-nice .modal-title { display: flex; align-items: center; gap: .75rem; margin: 0; }
+    .modal-nice .icon-badge {
+        width: 40px; height: 40px; border-radius: 12px; flex: 0 0 auto;
+        display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #fff;
+    }
+    .modal-nice .title-text { font-size: 1rem; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+    .modal-nice .modal-subtitle { font-size: .76rem; font-weight: 400; color: var(--text-muted); margin-top: .1rem; }
+    .modal-nice .modal-body { padding: 1.5rem; background: #fff; }
+    .modal-nice .form-label { font-weight: 600; font-size: .74rem; letter-spacing: .3px; text-transform: uppercase; color: #475569; margin-bottom: .4rem; }
+    .modal-nice .form-control, .modal-nice .form-select { border-radius: 10px; border: 1.5px solid #e2e8f0; padding: .55rem .8rem; font-size: .875rem; }
+    .modal-nice .form-control:focus, .modal-nice .form-select:focus { box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
+    .modal-nice .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: #f8fafc; }
+    .modal-nice .modal-footer .btn { border-radius: 10px; font-weight: 600; padding: .55rem 1.2rem; font-size: .82rem; }
+
+    .modal-sarpras .modal-header { background: linear-gradient(135deg,#eef2ff,#f5f3ff); }
+    .modal-sarpras .icon-badge { background: linear-gradient(135deg,#6366f1,#4f46e5); }
+    .modal-sarpras .btn-save { background: linear-gradient(135deg,#6366f1,#4f46e5); border: 0; color: #fff; }
+    .modal-sarpras .btn-save:hover { filter: brightness(0.95); color: #fff; }
+    .modal-sarpras .form-control:focus, .modal-sarpras .form-select:focus { border-color: #6366f1; }
+    .modal-sarpras .item-info {
+        background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+        padding: .85rem 1rem; margin-bottom: 1.1rem; display: flex; align-items: center; gap: .75rem;
+    }
+    .modal-sarpras .item-info .item-icon {
+        width: 36px; height: 36px; border-radius: 10px; background: #eef2ff; color: #4f46e5;
+        display: flex; align-items: center; justify-content: center; font-size: 1rem; flex: 0 0 auto;
+    }
+    .modal-sarpras .item-info .item-name { font-weight: 600; font-size: .85rem; color: #1a2332; }
+    .modal-sarpras .item-info .item-meta { font-size: .74rem; color: #64748b; }
+    /* Status: pakai pola resmi Bootstrap btn-check + label.btn, dipastikan kompatibel */
+    .modal-sarpras .status-group { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .modal-sarpras .status-group .btn {
+        border-radius: 999px !important; font-size: .78rem; font-weight: 600; padding: .4rem 1rem;
+        border: 1.5px solid #e2e8f0; color: #64748b; background: #fff;
+    }
+    .modal-sarpras .status-group .btn-check:checked + .btn {
+        background: #4f46e5; border-color: #4f46e5; color: #fff;
+    }
+</style>
 
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
     <div>
@@ -148,38 +203,6 @@ $badgeClass = [
                                 <?php endif; ?>
                             </td>
                         </tr>
-
-                        <!-- Modal Tanggapi -->
-                        <div class="modal fade" id="modalTanggapi<?= (int) $row['id'] ?>" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <form method="POST" class="modal-content">
-                                    <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Tanggapi Permintaan</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p class="text-muted" style="font-size:0.85rem;"><?= htmlspecialchars($row['nama_barang']) ?> (<?= (int) $row['jumlah'] ?> <?= htmlspecialchars($row['satuan']) ?>)</p>
-                                        <div class="mb-3">
-                                            <label class="form-label">Status</label>
-                                            <select class="form-select" name="status" required>
-                                                <?php foreach (['diajukan', 'disetujui', 'ditolak', 'selesai'] as $s): ?>
-                                                <option value="<?= $s ?>" <?= $row['status'] === $s ? 'selected' : '' ?>><?= ucfirst($s) ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                        <div class="mb-1">
-                                            <label class="form-label">Catatan</label>
-                                            <textarea class="form-control" name="catatan_admin" rows="2"><?= htmlspecialchars($row['catatan_admin'] ?? '') ?></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                                        <button type="submit" name="tanggapi" class="btn btn-primary">Simpan</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr><td colspan="9" class="text-center text-muted py-5">Belum ada permintaan sarpras</td></tr>
@@ -189,6 +212,55 @@ $badgeClass = [
         </div>
     </div>
 </div>
+
+<?php if ($canEdit): ?>
+<?php foreach ($data as $row): ?>
+<!-- Modal Tanggapi -->
+<div class="modal fade modal-nice modal-sarpras" id="modalTanggapi<?= (int) $row['id'] ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" class="modal-content">
+            <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <span class="icon-badge"><i class="bi bi-chat-left-text"></i></span>
+                    <span>
+                        <span class="title-text d-block">Tanggapi Permintaan</span>
+                        <span class="modal-subtitle d-block">Perbarui status &amp; catatan untuk permintaan ini</span>
+                    </span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="item-info">
+                    <div class="item-icon"><i class="bi bi-box-seam"></i></div>
+                    <div>
+                        <div class="item-name"><?= htmlspecialchars($row['nama_barang']) ?></div>
+                        <div class="item-meta"><?= (int) $row['jumlah'] ?> <?= htmlspecialchars($row['satuan']) ?> &middot; diajukan oleh <?= htmlspecialchars($row['pemohon_nama'] ?? '—') ?></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Status</label>
+                    <div class="status-group">
+                        <?php foreach (['diajukan', 'disetujui', 'ditolak', 'selesai'] as $s): ?>
+                        <input type="radio" class="btn-check" name="status" id="status<?= $s ?>_<?= (int) $row['id'] ?>" value="<?= $s ?>" autocomplete="off" <?= $row['status'] === $s ? 'checked' : '' ?> required>
+                        <label class="btn" for="status<?= $s ?>_<?= (int) $row['id'] ?>"><i class="bi <?= $statusIcon[$s] ?> me-1"></i><?= ucfirst($s) ?></label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label">Catatan</label>
+                    <textarea class="form-control" name="catatan_admin" rows="2" placeholder="Opsional — alasan/keterangan untuk pemohon"><?= htmlspecialchars($row['catatan_admin'] ?? '') ?></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" name="tanggapi" class="btn btn-save"><i class="bi bi-check2-circle me-1"></i>Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endforeach; ?>
+<?php endif; ?>
 
 <div class="modal fade" id="modalTambah" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">

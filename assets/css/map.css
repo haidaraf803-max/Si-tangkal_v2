@@ -25,6 +25,14 @@ html, body, #map {
     color: var(--color-primary) !important;
 }
 
+/* Kontrol zoom (+/-) ditempatkan di pojok kanan bawah peta (lihat
+   L.control.zoom({position:'bottomright'}) di assets/js/map.js). Beri jarak
+   dari tepi layar supaya tidak menempel, terutama di layar kecil/mobile. */
+.leaflet-bottom.leaflet-right {
+    margin-bottom: 16px;
+    margin-right: 16px;
+}
+
 /* Header berakhir sekitar 94px dari atas viewport. Kontrol Leaflet bawaan
    bergeser ke bawah agar selalu terlihat, termasuk pada halaman mini-map yang
    tidak memakai selector #map ini. Ubah angka 22px untuk mengatur jaraknya. */
