@@ -12,8 +12,11 @@ $canCreatePohon = Rbac::can($config, 'pohon', 'create');
 $canEditPohon   = Rbac::can($config, 'pohon', 'edit');
 $canDeletePohon = Rbac::can($config, 'pohon', 'delete');
 require_once 'core/PohonModel.php';
+require_once 'core/PohonPendingModel.php';
 
-$model     = new PohonModel($config);
+$model        = new PohonModel($config);
+$pendingModel = new PohonPendingModel($config);
+$currentUserId = $_SESSION['admin']['UserId'] ?? null;
 $alertMsg  = '';
 $alertType = '';
 
@@ -37,6 +40,56 @@ if (isset($_GET['deleted'])) {
     } else {
         $alertMsg  = $_GET['deleted'] == '1' ? 'Data pohon berhasil dihapus.' : 'Gagal menghapus data pohon.';
         $alertType = $_GET['deleted'] == '1' ? 'success' : 'danger';
+    }
+}
+
+// ===== VALIDASI DATA PENDING (pindahkan ke tabel pohon jika valid) =====
+if (isset($_GET['validasi'])) {
+    if (!$canEditPohon) {
+        header('Location: pohon.php?pending=forbidden');
+        exit;
+    }
+    $result = $pendingModel->approve((int) $_GET['validasi'], $model, $currentUserId);
+    header('Location: pohon.php?pending=' . ($result['success'] ? 'valid' : 'invalid') . '&msg=' . urlencode($result['message']));
+    exit;
+}
+
+// ===== TOLAK DATA PENDING (manual) =====
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tolak_pending') {
+    if (!$canEditPohon) {
+        header('Location: pohon.php?pending=forbidden');
+        exit;
+    }
+    $idPending = (int) ($_POST['id_pending'] ?? 0);
+    $catatan   = trim($_POST['catatan_tolak'] ?? '');
+    $ok = $pendingModel->reject($idPending, $catatan, $currentUserId);
+    header('Location: pohon.php?pending=' . ($ok ? 'rejected' : 'error'));
+    exit;
+}
+
+// ===== HAPUS DATA PENDING =====
+if (isset($_GET['hapus_pending'])) {
+    if (!$canDeletePohon) {
+        header('Location: pohon.php?pending=forbidden');
+        exit;
+    }
+    $pendingModel->delete((int) $_GET['hapus_pending']);
+    header('Location: pohon.php?pending=deleted');
+    exit;
+}
+
+// Alert dari redirect proses validasi/tolak/hapus pending
+if (isset($_GET['pending'])) {
+    $map = [
+        'forbidden' => ['Peran Anda tidak memiliki izin memvalidasi data pohon.', 'warning'],
+        'valid'     => ['Data pending valid & berhasil dipindahkan ke data pohon.', 'success'],
+        'invalid'   => ['Data pending tidak valid, ditandai gagal validasi. ' . ($_GET['msg'] ?? ''), 'danger'],
+        'rejected'  => ['Data pending berhasil ditolak.', 'success'],
+        'deleted'   => ['Data pending berhasil dihapus.', 'success'],
+        'error'     => ['Gagal memproses data pending.', 'danger'],
+    ];
+    if (isset($map[$_GET['pending']])) {
+        [$alertMsg, $alertType] = $map[$_GET['pending']];
     }
 }
 
@@ -79,37 +132,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     if ($nama_lokal != '' && $kesehatan != '' && $nama_jalan != '' && $koordinat_x !== '' && $koordinat_y !== '') {
 
+        // Catatan: pohon baru TIDAK langsung masuk tabel `pohon`.
+        // Disimpan dulu ke staging `pohon_pending`, menunggu divalidasi
+        // (tombol "Validasi" pada tabel Data Pending di bawah).
         $fotoName = $model->uploadFoto($_FILES['foto'] ?? null);
 
-        $newId = $model->create(
-            $nama_lokal,
-            $nama_latin,
-            $family,
-            $tahun_tanam,
-            $habitus,
-            $status_kel,
-            (float) $volume,
-            $kelas_awet,
-            $kelas_kuat,
-            (float) $berat_jenis,
-            $kesehatan,
-            (float) $serapan_co,
-            (float) $produksi_o,
-            $nama_jalan,
-            $kelurahan,
-            $kecamatan,
-            (float) $koordinat_x,
-            (float) $koordinat_y,
-            $keterangan,
-            $umur_pohon,
-            $fotoName
-        );
+        $pendingId = $pendingModel->create([
+            'nama_lokal'  => $nama_lokal,
+            'nama_latin'  => $nama_latin,
+            'family'      => $family,
+            'tahun_tanam' => $tahun_tanam,
+            'habitus'     => $habitus,
+            'status_kel'  => $status_kel,
+            'volume'      => $volume,
+            'kelas_awet'  => $kelas_awet,
+            'kelas_kuat'  => $kelas_kuat,
+            'berat_jenis' => $berat_jenis,
+            'kesehatan'   => $kesehatan,
+            'serapan_co'  => $serapan_co,
+            'produksi_o'  => $produksi_o,
+            'nama_jalan'  => $nama_jalan,
+            'kelurahan'   => $kelurahan,
+            'kecamatan'   => $kecamatan,
+            'koordinat_x' => $koordinat_x,
+            'koordinat_y' => $koordinat_y,
+            'keterangan'  => $keterangan,
+            'umur_pohon'  => $umur_pohon,
+            'foto'        => $fotoName,
+        ], $currentUserId);
 
-        if ($newId) {
-            $alertMsg  = 'Data pohon berhasil ditambahkan.';
+        if ($pendingId) {
+            $alertMsg  = 'Data pohon berhasil dikirim & menunggu validasi sebelum masuk ke Data Pohon (lihat tabel "Data Pending" di bawah).';
             $alertType = 'success';
         } else {
-            $alertMsg  = 'Gagal menambahkan data pohon.';
+            $alertMsg  = 'Gagal menyimpan pengajuan data pohon.';
             $alertType = 'danger';
         }
 
@@ -132,6 +188,10 @@ $data    = $keyword ? $model->search($keyword) : $model->getAll();
 $totalSehat     = $model->countByKondisi('Sehat');
 $totalKurang    = $model->countByKondisi('Kurang Sehat');
 $totalMati      = $model->countByKondisi('Sakit');
+
+// ===== DATA PENDING (staging, belum masuk tabel pohon) =====
+$pendingData    = $pendingModel->getAll('pending');
+$totalPending   = count($pendingData);
 
 $pageTitle  = 'Kondisi Pohon';
 $activePage = 'pohon';
@@ -307,6 +367,104 @@ require_once 'layouts/sidebar.php';
                     <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- ======= TABLE: DATA PENDING (belum masuk tabel pohon) ======= -->
+<div class="card mt-4">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span><i class="bi bi-hourglass-split me-2"></i>Data Pending (Menunggu Validasi)
+            <span class="badge bg-warning text-dark ms-1"><?= $totalPending ?></span>
+        </span>
+        <?php
+            $exportModul        = 'pohon_pending';
+            $exportLabel        = 'Data Pohon Pending';
+            $exportSupportsDate = true; // pohon_pending punya kolom dibuat_pada
+            require 'layouts/export_modal.php';
+        ?>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3" style="width:40px;">No</th>
+                        <th>Nama Lokal</th>
+                        <th class="text-center">Kondisi</th>
+                        <th>Lokasi</th>
+                        <th>Dikirim Oleh</th>
+                        <th class="text-center pe-3">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!empty($pendingData)): ?>
+                        <?php $no = 1; foreach ($pendingData as $row): ?>
+                        <tr>
+                            <td class="ps-3 text-muted"><?= $no++ ?></td>
+                            <td class="fw-500"><?= htmlspecialchars($row['nama_lokal']) ?></td>
+                            <td class="text-center">
+                                <span class="badge rounded-pill bg-secondary-subtle text-secondary"><?= htmlspecialchars($row['kesehatan']) ?></span>
+                            </td>
+                            <td><?= htmlspecialchars($row['nama_jalan']) ?></td>
+                            <td><?= htmlspecialchars($row['dibuat_oleh_nama'] ?? '—') ?></td>
+                            <td class="text-center pe-3">
+                                <?php if ($canEditPohon): ?>
+                                <a href="pohon.php?validasi=<?= (int) $row['id'] ?>"
+                                   class="btn btn-sm btn-outline-success"
+                                   title="Validasi & pindahkan ke Data Pohon"
+                                   onclick="return confirm('Validasi data ini? Jika lolos validasi, data akan dipindahkan ke Data Pohon.')">
+                                    <i class="bi bi-check-lg"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" title="Tolak"
+                                        data-bs-toggle="modal" data-bs-target="#modalTolak"
+                                        onclick="document.getElementById('tolak_id_pending').value = '<?= (int) $row['id'] ?>'">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                                <?php endif; ?>
+                                <?php if ($canDeletePohon): ?>
+                                <a href="pohon.php?hapus_pending=<?= (int) $row['id'] ?>"
+                                   class="btn btn-sm btn-outline-secondary" title="Hapus"
+                                   onclick="return confirm('Yakin ingin menghapus pengajuan ini?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                Tidak ada data pohon yang menunggu validasi.
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ======= MODAL: TOLAK DATA PENDING ======= -->
+<div class="modal fade" id="modalTolak" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST">
+                <input type="hidden" name="action" value="tolak_pending">
+                <input type="hidden" name="id_pending" id="tolak_id_pending" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-x-circle me-2 text-danger"></i>Tolak Data Pending</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Alasan Penolakan</label>
+                    <textarea name="catatan_tolak" class="form-control" rows="3" placeholder="Contoh: koordinat di luar wilayah Cimahi"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-x-lg me-1"></i>Tolak</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

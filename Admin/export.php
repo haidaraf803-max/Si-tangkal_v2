@@ -45,6 +45,25 @@ $modules = [
             'koordinat_x' => 'Longitude', 'koordinat_y' => 'Latitude', 'keterangan' => 'Keterangan',
         ],
     ],
+    // Staging pohon baru (belum/sedang divalidasi). Menu RBAC dipakai
+    // sama dengan 'pohon' karena ini bagian dari fitur yang sama.
+    'pohon_pending' => [
+        'menu'      => 'pohon',
+        'table'     => 'pohon_pending',
+        'date_column' => 'dibuat_pada',
+        'date_is_datetime' => true,
+        'order_by'  => 'id DESC',
+        'columns'   => [
+            'id' => 'ID', 'nama_lokal' => 'Nama Lokal', 'nama_latin' => 'Nama Latin',
+            'family' => 'Family', 'tahun_tanam' => 'Tahun Tanam', 'umur_pohon' => 'Umur Pohon',
+            'habitus' => 'Habitus', 'status_kel' => 'Status Kelangkaan', 'kesehatan' => 'Kesehatan',
+            'nama_jalan' => 'Nama Jalan', 'kelurahan' => 'Kelurahan', 'kecamatan' => 'Kecamatan',
+            'koordinat_x' => 'Longitude', 'koordinat_y' => 'Latitude', 'keterangan' => 'Keterangan',
+            'status' => 'Status Validasi', 'catatan_validasi' => 'Catatan Validasi',
+            'pohon_id' => 'ID Pohon (jika valid)', 'dibuat_pada' => 'Dikirim Pada',
+            'divalidasi_pada' => 'Divalidasi Pada',
+        ],
+    ],
     'pengajuan' => [
         'menu'      => 'pengajuan',
         'table'     => 'pengajuan',
