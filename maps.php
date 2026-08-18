@@ -156,16 +156,20 @@ $stats = TreeRepository::stats();
             <label class="switch"><input type="checkbox" id="layer-villages" ><span class="switch-slider"></span></label>
         </div> -->
         <div class="layer-row">
-            <span class="layer-row-label"><span class="layer-dot" style="border:2px dashed var(--color-primary-dark); background:transparent;"></span> Batas Kelurahan</span>
+            <span class="layer-row-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l6 3 6-3 6 3v15l-6-3-6 3-6-3z"></path><path d="M9 6v15"></path><path d="M15 3v15"></path></svg> Batas Kelurahan</span>
             <label class="switch"><input type="checkbox" id="layer-districts"><span class="switch-slider"></span></label>
         </div>
         <div class="layer-row">
-            <span class="layer-row-label"><span class="layer-dot" style="border:2px dashed var(--color-primary-dark); background:transparent;"></span> Fotoudara</span>
+            <span class="layer-row-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Fotoudara</span>
             <label class="switch"><input type="checkbox" id="layer-fotoudara" ><span class="switch-slider"></span></label>
         </div>
         <div class="layer-row">
-            <span class="layer-row-label"><span class="layer-dot" style="border:2px dashed var(--color-primary-dark); background:transparent;"></span> Pucuk</span>
+            <span class="layer-row-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 5 12h4l-5 8h16l-5-8h4z"></path><path d="M12 22v-4"></path></svg> Tajuk Pohon</span>
             <label class="switch"><input type="checkbox" id="layer-pucuk" ><span class="switch-slider"></span></label>
+        </div>
+        <div class="layer-row">
+            <span class="layer-row-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg> Tutupan Lahan IKTL</span>
+            <label class="switch"><input type="checkbox" id="layer-tutupan-lahan" ><span class="switch-slider"></span></label>
         </div>
         <!-- <div class="layer-row">
             <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-gray-300);"></span> Jalan</span>

@@ -229,6 +229,15 @@ async getPucuk() {
     return makeWmsLayer('cimahi:pucuk');
 
 },
+
+// ==========================
+// Tutupan Lahan IKTL -> WMS
+// ==========================
+async getTutupanLahanIktl() {
+
+    return makeWmsLayer('cimahi:TUTUPAN_LAHAN_KLHK');
+
+},
     };
 
 })();
