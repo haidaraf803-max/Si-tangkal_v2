@@ -101,6 +101,7 @@ const layerGroups = {
     wmsFotoudara: L.layerGroup(),
     wmsPucuk : L.layerGroup(),
     wmsTutupanLahan: L.layerGroup(),
+    wmsLahanKritis: L.layerGroup(),
 };
 
 // Kedua sumber berikut berasal dari GeoServer WFS, bukan dari database lokal.
@@ -308,6 +309,15 @@ async function loadAllLayers() {
 
     } catch (e) {
         console.error("Tutupan Lahan IKTL gagal dimuat", e);
+    }
+
+    try {
+        const lahanKritisWms = await DataService.getLahanKritis();
+        layerGroups.wmsLahanKritis.clearLayers();
+        layerGroups.wmsLahanKritis.addLayer(lahanKritisWms);
+
+    } catch (e) {
+        console.error("Lahan Kritis gagal dimuat", e);
     }
 
     try {
@@ -704,6 +714,11 @@ function renderTutupanLahan(wmsLayer){
     layerGroups.wmsTutupanLahan.addLayer(wmsLayer);
 }
 
+function renderLahanKritis(wmsLayer){
+    layerGroups.wmsLahanKritis.clearLayers();
+    layerGroups.wmsLahanKritis.addLayer(wmsLayer);
+}
+
 function renderRoads(wmsLayer) {
 
     layerGroups.roads.clearLayers();
@@ -834,7 +849,8 @@ function bindLayerToggles() {
         'layer-labels': layerGroups.labels,
         'layer-fotoudara': layerGroups.wmsFotoudara,
         'layer-pucuk' : layerGroups.wmsPucuk,
-        'layer-tutupan-lahan' : layerGroups.wmsTutupanLahan
+        'layer-tutupan-lahan' : layerGroups.wmsTutupanLahan,
+        'layer-lahan-kritis' : layerGroups.wmsLahanKritis
     };
 
     Object.entries(map_).forEach(([id, group]) => {

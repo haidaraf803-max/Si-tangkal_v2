@@ -35,6 +35,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add'])) {
     }
 }
 
+// ===== EDIT (ubah data permintaan) =====
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit'])) {
+    if (!$canEdit) {
+        $alertMsg  = 'Peran Anda tidak memiliki izin mengubah data permintaan sarpras.';
+        $alertType = 'warning';
+    } else {
+        $ok = $model->update((int) $_POST['id'], [
+            'tanggal'     => $_POST['tanggal'] ?? date('Y-m-d'),
+            'terima_dari' => trim($_POST['terima_dari'] ?? ''),
+            'penerima'    => trim($_POST['penerima'] ?? ''),
+            'nama_barang' => trim($_POST['nama_barang'] ?? ''),
+            'jumlah'      => (int) ($_POST['jumlah'] ?? 1),
+            'satuan'      => trim($_POST['satuan'] ?? 'unit'),
+            'alasan'      => trim($_POST['alasan'] ?? ''),
+        ]);
+        $alertMsg  = $ok ? 'Data permintaan sarpras berhasil diperbarui.' : 'Gagal memperbarui data.';
+        $alertType = $ok ? 'success' : 'danger';
+    }
+}
+
 // ===== TANGGAPI (ubah status) =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tanggapi'])) {
     if (!$canEdit) {
@@ -192,8 +212,14 @@ $statusIcon = [
                             </td>
                             <td class="text-center pe-3">
                                 <?php if ($canEdit): ?>
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-1"
+                                        data-bs-toggle="modal" data-bs-target="#modalEdit<?= (int) $row['id'] ?>"
+                                        title="Edit data permintaan">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary"
-                                        data-bs-toggle="modal" data-bs-target="#modalTanggapi<?= (int) $row['id'] ?>">
+                                        data-bs-toggle="modal" data-bs-target="#modalTanggapi<?= (int) $row['id'] ?>"
+                                        title="Tanggapi status">
                                     <i class="bi bi-chat-left-text"></i>
                                 </button>
                                 <?php endif; ?>
@@ -215,6 +241,62 @@ $statusIcon = [
 
 <?php if ($canEdit): ?>
 <?php foreach ($data as $row): ?>
+<!-- Modal Edit -->
+<div class="modal fade modal-nice modal-sarpras" id="modalEdit<?= (int) $row['id'] ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" class="modal-content">
+            <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <span class="icon-badge"><i class="bi bi-pencil"></i></span>
+                    <span>
+                        <span class="title-text d-block">Edit Permintaan Sarpras</span>
+                        <span class="modal-subtitle d-block">Perbarui detail data permintaan</span>
+                    </span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Tanggal <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" name="tanggal" value="<?= htmlspecialchars(date('Y-m-d', strtotime($row['tanggal']))) ?>" required>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Terima Dari <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="terima_dari" value="<?= htmlspecialchars($row['terima_dari'] ?? '') ?>" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Penerima <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="penerima" value="<?= htmlspecialchars($row['penerima'] ?? '') ?>" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nama Barang <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="nama_barang" value="<?= htmlspecialchars($row['nama_barang']) ?>" required>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Jumlah</label>
+                        <input type="number" class="form-control" name="jumlah" value="<?= (int) $row['jumlah'] ?>" min="1">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Satuan</label>
+                        <input type="text" class="form-control" name="satuan" value="<?= htmlspecialchars($row['satuan']) ?>">
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label">Alasan / Kebutuhan</label>
+                    <textarea class="form-control" name="alasan" rows="3"><?= htmlspecialchars($row['alasan'] ?? '') ?></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" name="edit" class="btn btn-save"><i class="bi bi-check2-circle me-1"></i>Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
 <!-- Modal Tanggapi -->
 <div class="modal fade modal-nice modal-sarpras" id="modalTanggapi<?= (int) $row['id'] ?>" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">

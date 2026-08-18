@@ -112,6 +112,10 @@ $embedMode = $embedMode ?? (isset($_GET['embed']) && $_GET['embed'] == '1');
                         <div class="navbar-user-dropdown-name"><?= htmlspecialchars($sitangkalUser['name'] ?? 'Admin') ?></div>
                         <div class="navbar-user-dropdown-role"><?= htmlspecialchars($sitangkalUser['department'] ?? 'Si-TANGKAL') ?></div>
                     </div>
+                    <a href="Admin/index.php" class="navbar-user-dropdown-item">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                        Dashboard
+                    </a>
                     <a href="Admin/profile.php" class="navbar-user-dropdown-item">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a8 8 0 0116 0v1"></path></svg>
                         Profil Saya

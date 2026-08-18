@@ -171,6 +171,10 @@ $stats = TreeRepository::stats();
             <span class="layer-row-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg> Tutupan Lahan IKTL</span>
             <label class="switch"><input type="checkbox" id="layer-tutupan-lahan" ><span class="switch-slider"></span></label>
         </div>
+        <div class="layer-row">
+            <span class="layer-row-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Lahan Kritis</span>
+            <label class="switch"><input type="checkbox" id="layer-lahan-kritis" ><span class="switch-slider"></span></label>
+        </div>
         <!-- <div class="layer-row">
             <span class="layer-row-label"><span class="layer-dot" style="background:var(--color-gray-300);"></span> Jalan</span>
             <label class="switch"><input type="checkbox" id="layer-roads" checked><span class="switch-slider"></span></label>

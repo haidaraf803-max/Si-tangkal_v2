@@ -119,6 +119,14 @@ require_once 'layouts/sidebar.php';
     .modal-pupuk .btn-save { background: linear-gradient(135deg,#10b981,#059669); border: 0; color: #fff; }
     .modal-pupuk .btn-save:hover { filter: brightness(0.95); color: #fff; }
     .modal-pupuk .form-control:focus, .modal-pupuk .form-select:focus { border-color: #10b981; }
+
+    /* ===== Modal Detail (read-only) ===== */
+    .modal-detail .detail-row { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid #f1f5f9; }
+    .modal-detail .detail-row:last-child { border-bottom: 0; }
+    .modal-detail .detail-label { font-size: .74rem; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; color: #94a3b8; flex: 0 0 42%; }
+    .modal-detail .detail-value { font-size: .875rem; color: #1a2332; font-weight: 500; text-align: right; flex: 1; word-break: break-word; }
+    .modal-detail .detail-photo { width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: .5rem; }
+    .modal-detail .detail-photo-empty { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.5rem; text-align: center; color: #94a3b8; font-size: .8rem; margin-top: .5rem; }
 </style>
 
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
@@ -188,6 +196,11 @@ require_once 'layouts/sidebar.php';
                             <td><?= htmlspecialchars($row['lokasi']) ?></td>
                             <td><?= htmlspecialchars($row['petugas_nama'] ?? '—') ?></td>
                             <td class="text-center pe-3">
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-1"
+                                        data-bs-toggle="modal" data-bs-target="#modalDetail<?= (int) $row['id'] ?>"
+                                        title="Lihat detail">
+                                    <i class="bi bi-eye"></i>
+                                </button>
                                 <?php if ($canEdit): ?>
                                 <button type="button" class="btn btn-sm btn-outline-primary me-1"
                                         data-bs-toggle="modal" data-bs-target="#modalEdit<?= (int) $row['id'] ?>">
@@ -209,6 +222,45 @@ require_once 'layouts/sidebar.php';
         </div>
     </div>
 </div>
+
+<?php foreach ($data as $row): ?>
+<!-- Modal Detail -->
+<div class="modal fade modal-nice modal-pupuk modal-detail" id="modalDetail<?= (int) $row['id'] ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <span class="icon-badge"><i class="bi bi-flower2"></i></span>
+                    <span>
+                        <span class="title-text d-block">Detail Pemakaian Pupuk</span>
+                        <span class="modal-subtitle d-block"><?= htmlspecialchars(date('d M Y', strtotime($row['tanggal']))) ?></span>
+                    </span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-row"><span class="detail-label">Tanggal</span><span class="detail-value"><?= htmlspecialchars(date('d M Y', strtotime($row['tanggal']))) ?></span></div>
+                <div class="detail-row"><span class="detail-label">Jenis Pupuk</span><span class="detail-value"><?= htmlspecialchars($row['jenis_pupuk']) ?></span></div>
+                <div class="detail-row"><span class="detail-label">Jumlah</span><span class="detail-value"><?= htmlspecialchars($row['jumlah']) ?> <?= htmlspecialchars($row['satuan']) ?></span></div>
+                <div class="detail-row"><span class="detail-label">Lokasi</span><span class="detail-value"><?= htmlspecialchars($row['lokasi']) ?></span></div>
+                <div class="detail-row"><span class="detail-label">Petugas</span><span class="detail-value"><?= htmlspecialchars($row['petugas_nama'] ?? '—') ?></span></div>
+                <div class="detail-row"><span class="detail-label">Keterangan</span><span class="detail-value"><?= $row['keterangan'] ? nl2br(htmlspecialchars($row['keterangan'])) : '—' ?></span></div>
+                <?php if (!empty($row['foto'])): ?>
+                    <img src="../assets/foto/<?= htmlspecialchars($row['foto']) ?>" class="detail-photo" alt="Foto pemakaian pupuk">
+                <?php else: ?>
+                    <div class="detail-photo-empty"><i class="bi bi-image me-1"></i>Tidak ada foto</div>
+                <?php endif; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <?php if ($canEdit): ?>
+                <button type="button" class="btn btn-save" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#modalEdit<?= (int) $row['id'] ?>"><i class="bi bi-pencil me-1"></i>Edit</button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endforeach; ?>
 
 <?php if ($canEdit): ?>
 <?php foreach ($data as $row): ?>

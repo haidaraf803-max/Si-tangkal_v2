@@ -41,6 +41,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add'])) {
     }
 }
 
+// ===== EDIT PERHITUNGAN =====
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit'])) {
+    if (!$canEdit) {
+        $alertMsg  = 'Peran Anda tidak memiliki izin mengubah perhitungan pergantian pohon.';
+        $alertType = 'warning';
+    } else {
+        $ok = $model->update((int) $_POST['id'], [
+            'jenis_pohon'   => trim($_POST['jenis_pohon'] ?? ''),
+            'diameter_cm'   => (float) ($_POST['diameter_cm'] ?? 0),
+            'jumlah_pohon'  => (int) ($_POST['jumlah_pohon'] ?? 1),
+            'nomor_surat'   => trim($_POST['nomor_surat'] ?? ''),
+            'tanggal_surat' => $_POST['tanggal_surat'] ?? date('Y-m-d'),
+            'nama_kabid'    => trim($_POST['nama_kabid'] ?? ''),
+            'nip_kabid'     => trim($_POST['nip_kabid'] ?? ''),
+        ]);
+        $alertMsg  = $ok ? 'Perhitungan pergantian pohon berhasil diperbarui.' : 'Gagal memperbarui data.';
+        $alertType = $ok ? 'success' : 'danger';
+    }
+}
+
 // ===== KELOLA TARIF =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_tarif'])) {
     if (!$canEdit) {
@@ -170,6 +190,13 @@ require_once 'layouts/sidebar.php';
                                 <a href="surat_pergantian.php?id=<?= (int) $row['id'] ?>" class="btn btn-sm btn-outline-primary" title="Lihat/Cetak Surat">
                                     <i class="bi bi-file-earmark-text"></i>
                                 </a>
+                                <?php if ($canEdit): ?>
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        data-bs-toggle="modal" data-bs-target="#modalEdit<?= (int) $row['id'] ?>"
+                                        title="Edit perhitungan">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <?php endif; ?>
                                 <?php if ($canDelete): ?>
                                 <a href="pergantian_pohon.php?hapus=<?= (int) $row['id'] ?>" class="btn btn-sm btn-outline-danger"
                                    onclick="return confirm('Hapus perhitungan ini?')"><i class="bi bi-trash"></i></a>
@@ -185,6 +212,65 @@ require_once 'layouts/sidebar.php';
         </div>
     </div>
 </div>
+
+<?php if ($canEdit): ?>
+<?php foreach ($data as $row): ?>
+<!-- Modal: Edit Perhitungan -->
+<div class="modal fade" id="modalEdit<?= (int) $row['id'] ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" class="modal-content">
+            <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil text-success me-2"></i>Edit Perhitungan Pergantian Pohon</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Jenis Pohon <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="jenis_pohon" list="listJenisPohon" value="<?= htmlspecialchars($row['jenis_pohon']) ?>" required>
+                    <div class="form-text">Jika jenis tidak ditemukan di tarif, sistem otomatis memakai tarif "Umum".</div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Diameter (cm) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.1" class="form-control" name="diameter_cm" value="<?= htmlspecialchars($row['diameter_cm']) ?>" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Jumlah Pohon <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" name="jumlah_pohon" value="<?= (int) $row['jumlah_pohon'] ?>" min="1" required>
+                    </div>
+                </div>
+                <div class="form-text mb-3">Tarif &amp; total biaya akan dihitung ulang otomatis berdasarkan jenis pohon dan diameter di atas.</div>
+                <hr>
+                <p class="text-muted mb-2" style="font-size:0.8rem;">Data untuk surat resmi:</p>
+                <div class="mb-3">
+                    <label class="form-label">Nomor Surat</label>
+                    <input type="text" class="form-control" name="nomor_surat" value="<?= htmlspecialchars($row['nomor_surat'] ?? '') ?>">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tanggal Surat</label>
+                    <input type="date" class="form-control" name="tanggal_surat" value="<?= htmlspecialchars(date('Y-m-d', strtotime($row['tanggal_surat'] ?? 'now'))) ?>">
+                </div>
+                <div class="row g-2 mb-1">
+                    <div class="col-6">
+                        <label class="form-label">Nama Kabid</label>
+                        <input type="text" class="form-control" name="nama_kabid" value="<?= htmlspecialchars($row['nama_kabid'] ?? '') ?>">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">NIP Kabid</label>
+                        <input type="text" class="form-control" name="nip_kabid" value="<?= htmlspecialchars($row['nip_kabid'] ?? '') ?>">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" name="edit" class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endforeach; ?>
+<?php endif; ?>
 
 <!-- Modal: Hitung Pergantian -->
 <div class="modal fade" id="modalHitung" tabindex="-1" aria-hidden="true">

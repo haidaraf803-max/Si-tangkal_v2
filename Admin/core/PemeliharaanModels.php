@@ -206,6 +206,32 @@ class SarprasModel
         return $ok ? (int) $this->conn->lastInsertId() : false;
     }
 
+    /** Edit data permintaan (tanggal, terima dari, penerima, barang, jumlah, satuan, alasan) */
+    public function update(int $id, array $d): bool
+    {
+        $stmt = $this->conn->prepare(
+            "UPDATE permintaan_sarpras SET
+                tanggal = :tanggal,
+                terima_dari = :terima_dari,
+                penerima = :penerima,
+                nama_barang = :nama,
+                jumlah = :jumlah,
+                satuan = :satuan,
+                alasan = :alasan
+             WHERE id = :id"
+        );
+        return $stmt->execute([
+            ':tanggal'     => $d['tanggal'],
+            ':terima_dari' => $d['terima_dari'] ?? null,
+            ':penerima'    => $d['penerima'] ?? null,
+            ':nama'        => $d['nama_barang'],
+            ':jumlah'      => $d['jumlah'] ?: 1,
+            ':satuan'      => $d['satuan'] ?: 'unit',
+            ':alasan'      => $d['alasan'] ?? null,
+            ':id'          => $id,
+        ]);
+    }
+
     /** Admin/Superadmin menanggapi status permintaan */
     public function tanggapi(int $id, string $status, string $catatan): bool
     {

@@ -121,6 +121,14 @@ require_once 'layouts/sidebar.php';
     .modal-bbm .btn-save { background: linear-gradient(135deg,#f59e0b,#ea580c); border: 0; color: #fff; }
     .modal-bbm .btn-save:hover { filter: brightness(0.95); color: #fff; }
     .modal-bbm .form-control:focus, .modal-bbm .form-select:focus { border-color: #f59e0b; }
+
+    /* ===== Modal Detail (read-only) ===== */
+    .modal-detail .detail-row { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid #f1f5f9; }
+    .modal-detail .detail-row:last-child { border-bottom: 0; }
+    .modal-detail .detail-label { font-size: .74rem; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; color: #94a3b8; flex: 0 0 42%; }
+    .modal-detail .detail-value { font-size: .875rem; color: #1a2332; font-weight: 500; text-align: right; flex: 1; word-break: break-word; }
+    .modal-detail .detail-photo { width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: .5rem; }
+    .modal-detail .detail-photo-empty { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.5rem; text-align: center; color: #94a3b8; font-size: .8rem; margin-top: .5rem; }
 </style>
 
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
@@ -198,6 +206,11 @@ require_once 'layouts/sidebar.php';
                             <td class="text-center"><?= $row['jumlah_kupon'] !== null ? (int) $row['jumlah_kupon'] . ' lbr' : '-' ?></td>
                             <td class="text-end">Rp <?= number_format((float) ($row['nominal_kupon'] ?? $row['nominal_rupiah'] ?? 0), 0, ',', '.') ?></td>
                             <td class="text-center pe-3">
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-1"
+                                        data-bs-toggle="modal" data-bs-target="#modalDetail<?= (int) $row['id'] ?>"
+                                        title="Lihat detail">
+                                    <i class="bi bi-eye"></i>
+                                </button>
                                 <?php if ($canEdit): ?>
                                 <button type="button" class="btn btn-sm btn-outline-primary me-1"
                                         data-bs-toggle="modal" data-bs-target="#modalEdit<?= (int) $row['id'] ?>">
@@ -219,6 +232,55 @@ require_once 'layouts/sidebar.php';
         </div>
     </div>
 </div>
+
+<?php foreach ($data as $row): ?>
+<!-- Modal Detail -->
+<div class="modal fade modal-nice modal-bbm modal-detail" id="modalDetail<?= (int) $row['id'] ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <span class="icon-badge"><i class="bi bi-fuel-pump"></i></span>
+                    <span>
+                        <span class="title-text d-block">Detail Pemakaian BBM</span>
+                        <span class="modal-subtitle d-block"><?= htmlspecialchars(date('d M Y', strtotime($row['tanggal']))) ?></span>
+                    </span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-row"><span class="detail-label">Tanggal</span><span class="detail-value"><?= htmlspecialchars(date('d M Y', strtotime($row['tanggal']))) ?></span></div>
+                <div class="detail-row"><span class="detail-label">Terima Dari</span><span class="detail-value"><?= htmlspecialchars($row['terima_dari'] ?? '—') ?></span></div>
+                <div class="detail-row"><span class="detail-label">Penerima</span><span class="detail-value"><?= htmlspecialchars($row['penerima'] ?? ($row['petugas_nama'] ?? '—')) ?></span></div>
+                <div class="detail-row"><span class="detail-label">Keperluan</span><span class="detail-value"><?= htmlspecialchars($row['keperluan'] ?? '—') ?></span></div>
+                <div class="detail-row"><span class="detail-label">Jumlah Kupon</span><span class="detail-value"><?= $row['jumlah_kupon'] !== null ? (int) $row['jumlah_kupon'] . ' lembar' : '—' ?></span></div>
+                <div class="detail-row"><span class="detail-label">Nominal Kupon</span><span class="detail-value">Rp <?= number_format((float) ($row['nominal_kupon'] ?? $row['nominal_rupiah'] ?? 0), 0, ',', '.') ?></span></div>
+                <?php if (!empty($row['jenis_bbm'])): ?>
+                <div class="detail-row"><span class="detail-label">Jenis BBM</span><span class="detail-value"><?= htmlspecialchars($row['jenis_bbm']) ?></span></div>
+                <?php endif; ?>
+                <?php if (!empty($row['jumlah_liter'])): ?>
+                <div class="detail-row"><span class="detail-label">Jumlah Liter</span><span class="detail-value"><?= htmlspecialchars($row['jumlah_liter']) ?> liter</span></div>
+                <?php endif; ?>
+                <?php if (!empty($row['kendaraan'])): ?>
+                <div class="detail-row"><span class="detail-label">Kendaraan</span><span class="detail-value"><?= htmlspecialchars($row['kendaraan']) ?></span></div>
+                <?php endif; ?>
+                <div class="detail-row"><span class="detail-label">Keterangan</span><span class="detail-value"><?= $row['keterangan'] ? nl2br(htmlspecialchars($row['keterangan'])) : '—' ?></span></div>
+                <?php if (!empty($row['bukti'])): ?>
+                    <img src="../assets/foto/<?= htmlspecialchars($row['bukti']) ?>" class="detail-photo" alt="Bukti struk/kupon BBM">
+                <?php else: ?>
+                    <div class="detail-photo-empty"><i class="bi bi-image me-1"></i>Tidak ada bukti/foto</div>
+                <?php endif; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <?php if ($canEdit): ?>
+                <button type="button" class="btn btn-save" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#modalEdit<?= (int) $row['id'] ?>"><i class="bi bi-pencil me-1"></i>Edit</button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endforeach; ?>
 
 <?php if ($canEdit): ?>
 <?php foreach ($data as $row): ?>

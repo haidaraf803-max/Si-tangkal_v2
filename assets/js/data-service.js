@@ -238,6 +238,15 @@ async getTutupanLahanIktl() {
     return makeWmsLayer('cimahi:TUTUPAN_LAHAN_KLHK');
 
 },
+
+// ==========================
+// Lahan Kritis -> WMS
+// ==========================
+async getLahanKritis() {
+
+    return makeWmsLayer('lahan%20kritis%20cimahi');
+
+},
     };
 
 })();

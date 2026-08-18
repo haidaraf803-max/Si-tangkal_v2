@@ -145,6 +145,45 @@ class PergantianModel
         return $ok ? (int) $this->conn->lastInsertId() : false;
     }
 
+    /**
+     * Edit data pergantian pohon. Jika jenis_pohon/diameter_cm/jumlah_pohon berubah,
+     * tarif & total_biaya dihitung ulang otomatis (formula sama seperti create()).
+     */
+    public function update(int $id, array $d): bool
+    {
+        $tarifRow   = $this->tarif->findMatch($d['jenis_pohon'], (float) $d['diameter_cm']);
+        $hargaPerCm = $tarifRow ? (float) $tarifRow['harga_per_cm'] : 0;
+        $totalBiaya = $hargaPerCm * (float) $d['diameter_cm'] * (int) $d['jumlah_pohon'];
+
+        $stmt = $this->conn->prepare(
+            "UPDATE pergantian_pohon SET
+                jenis_pohon = :jenis,
+                diameter_cm = :diameter,
+                jumlah_pohon = :jumlah,
+                tarif_id = :tarif_id,
+                harga_per_cm = :harga,
+                total_biaya = :total,
+                nomor_surat = :no_surat,
+                tanggal_surat = :tgl_surat,
+                nama_kabid = :nama_kabid,
+                nip_kabid = :nip_kabid
+             WHERE id = :id"
+        );
+        return $stmt->execute([
+            ':jenis'      => $d['jenis_pohon'],
+            ':diameter'   => $d['diameter_cm'],
+            ':jumlah'     => $d['jumlah_pohon'],
+            ':tarif_id'   => $tarifRow['id'] ?? null,
+            ':harga'      => $hargaPerCm,
+            ':total'      => $totalBiaya,
+            ':no_surat'   => $d['nomor_surat'] ?? null,
+            ':tgl_surat'  => $d['tanggal_surat'] ?: date('Y-m-d'),
+            ':nama_kabid' => $d['nama_kabid'] ?? null,
+            ':nip_kabid'  => $d['nip_kabid'] ?? null,
+            ':id'         => $id,
+        ]);
+    }
+
     public function delete(int $id): bool
     {
         $stmt = $this->conn->prepare("DELETE FROM pergantian_pohon WHERE id = ?");
