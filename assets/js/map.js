@@ -6,7 +6,7 @@
 
 const CIMAHI_CENTER = [-6.8743, 107.5425];
 const INITIAL_ZOOM = 13;
-const MAX_MAP_ZOOM = 22; // Zoom maksimal peta — dinaikkan agar bisa zoom lebih dekat
+const MAX_MAP_ZOOM = 24; // Zoom maksimal peta — dinaikkan agar bisa zoom lebih dekat
 
 let map;
 

@@ -26,7 +26,7 @@ const DataService = (() => {
     // Opsi dasar untuk semua layer WMS GeoServer.
     //
     // PENTING soal maxZoom vs maxNativeZoom:
-    // - maxZoom = 22 artinya peta BOLEH di-zoom sampai level 22.
+    // - maxZoom = 24 artinya peta BOLEH di-zoom sampai level 24.
     // - Tapi tanpa maxNativeZoom, Leaflet akan tetap MEMINTA tile WMS
     //   langsung ke GeoServer di level 20/21/22. Di level sedekat itu,
     //   bounding box per-tile jadi sangat kecil dan sering melebihi batas
@@ -42,7 +42,7 @@ const DataService = (() => {
         transparent: true,
         version: '1.1.1',
         tiled: true,
-        maxZoom: 22,
+        maxZoom: 24,
         maxNativeZoom: 19, // <- FIX: cegah request WMS di zoom ekstrem yang bikin tile kosong
         // Simpan lebih banyak tile di sekitar viewport supaya saat peta
         // digeser (pan), tile tetangga sudah siap duluan dan tidak

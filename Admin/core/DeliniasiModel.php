@@ -112,6 +112,22 @@ class DeliniasiRthModel
         return $ok ? (int) $this->conn->lastInsertId() : false;
     }
 
+    /** Update deliniasi RTH yang sudah ada. Luas dihitung ulang dari geometry baru. */
+    public function update(int $id, array $d): bool
+    {
+        $luas = luasDariGeometryJson($d['geometry']);
+        $stmt = $this->conn->prepare(
+            "UPDATE deliniasi_rth
+             SET nama_lokasi = :nama, jenis_rth = :jenis, kecamatan = :kec,
+                 geometry = :geo, luas_m2 = :luas, keterangan = :ket
+             WHERE id = :id"
+        );
+        return $stmt->execute([
+            ':nama' => $d['nama_lokasi'], ':jenis' => $d['jenis_rth'] ?? null, ':kec' => $d['kecamatan'] ?? null,
+            ':geo'  => $d['geometry'], ':luas' => $luas, ':ket' => $d['keterangan'] ?? null, ':id' => $id,
+        ]);
+    }
+
     public function delete(int $id): bool
     {
         $stmt = $this->conn->prepare("DELETE FROM deliniasi_rth WHERE id = ?");
@@ -155,6 +171,13 @@ class DeliniasiTajukModel
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getById(int $id): array|false
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM deliniasi_tajuk WHERE id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     public function create(array $d, ?int $userId): int|false
     {
         $luas = luasDariGeometryJson($d['geometry']);
@@ -167,6 +190,21 @@ class DeliniasiTajukModel
             ':luas'  => $luas, ':ket' => $d['keterangan'] ?? null, ':user' => $userId,
         ]);
         return $ok ? (int) $this->conn->lastInsertId() : false;
+    }
+
+    /** Update deliniasi tajuk pohon yang sudah ada. Luas dihitung ulang dari geometry baru. */
+    public function update(int $id, array $d): bool
+    {
+        $luas = luasDariGeometryJson($d['geometry']);
+        $stmt = $this->conn->prepare(
+            "UPDATE deliniasi_tajuk
+             SET pohon_id = :pohon, nama_lokasi = :nama, geometry = :geo, luas_m2 = :luas, keterangan = :ket
+             WHERE id = :id"
+        );
+        return $stmt->execute([
+            ':pohon' => $d['pohon_id'] ?: null, ':nama' => $d['nama_lokasi'], ':geo' => $d['geometry'],
+            ':luas'  => $luas, ':ket' => $d['keterangan'] ?? null, ':id' => $id,
+        ]);
     }
 
     public function delete(int $id): bool
@@ -206,6 +244,13 @@ class PotensiPenanamanModel
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getById(int $id): array|false
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM potensi_penanaman WHERE id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     public function create(array $d, ?int $userId): int|false
     {
         $geomArr = json_decode($d['geometry'], true);
@@ -230,6 +275,32 @@ class PotensiPenanamanModel
             ':user'     => $userId,
         ]);
         return $ok ? (int) $this->conn->lastInsertId() : false;
+    }
+
+    /** Update data penanaman/potensi yang sudah ada. Luas dihitung ulang jika geometry berupa poligon. */
+    public function update(int $id, array $d): bool
+    {
+        $geomArr = json_decode($d['geometry'], true);
+        $isPolygon = is_array($geomArr) && count($geomArr) >= 3;
+        $luas = $isPolygon ? luasDariGeometryJson($d['geometry']) : null;
+
+        $stmt = $this->conn->prepare(
+            "UPDATE potensi_penanaman
+             SET tipe = :tipe, nama_lokasi = :nama, kecamatan = :kec, geometry = :geo, luas_m2 = :luas,
+                 estimasi_jumlah_pohon = :estimasi, sumber_kajian = :sumber, keterangan = :ket
+             WHERE id = :id"
+        );
+        return $stmt->execute([
+            ':tipe'     => $d['tipe'] === 'realisasi' ? 'realisasi' : 'potensi',
+            ':nama'     => $d['nama_lokasi'],
+            ':kec'      => $d['kecamatan'] ?? null,
+            ':geo'      => $d['geometry'],
+            ':luas'     => $luas,
+            ':estimasi' => $d['estimasi_jumlah_pohon'] !== '' ? (int) $d['estimasi_jumlah_pohon'] : null,
+            ':sumber'   => $d['sumber_kajian'] ?: 'Kajian Potensi Penanaman Kota Cimahi 2026 (Anggaran Perubahan)',
+            ':ket'      => $d['keterangan'] ?? null,
+            ':id'       => $id,
+        ]);
     }
 
     public function delete(int $id): bool

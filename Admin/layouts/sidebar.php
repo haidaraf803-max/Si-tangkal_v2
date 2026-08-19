@@ -27,6 +27,99 @@ $menuItems = array_map(function ($m) {
         'key'   => $m['code'],
     ];
 }, Rbac::accessibleMenus($config));
+
+// ===== PENGELOMPOKAN SIDEBAR (tampilan saja, tidak mengubah RBAC) =====
+// Menu tetap sepenuhnya dikontrol oleh Rbac::accessibleMenus() di atas —
+// mapping di bawah ini HANYA menentukan sub-menu mana yang dikelompokkan
+// di bawah kategori mana pada tampilan sidebar. Kode menu ('key') yang
+// tidak disebut di sini (atau yang usernya tidak punya akses) otomatis
+// tidak muncul. Kalau nanti ada menu baru, tinggal tambah code-nya ke
+// grup yang sesuai di bawah.
+$menuGroupDefs = [
+    'pemeliharaan' => [
+        'label' => 'Pemeliharaan',
+        'icon'  => 'bi-flower1',
+        'codes' => ['monitoring', 'laporan_penanaman', 'pemakaian_pupuk', 'pemakaian_bbm', 'permintaan_sarpras', 'pengajuan'],
+    ],
+    'penebangan' => [
+        'label' => 'Penebangan',
+        'icon'  => 'bi-scissors',
+        'codes' => ['pergantian_pohon'],
+    ],
+    'inventarisasi' => [
+        'label' => 'Inventarisasi Pohon',
+        'icon'  => 'bi-tree',
+        'codes' => ['pohon', 'stok_bibit', 'permohonan_bibit'],
+    ],
+    'peta' => [
+        'label' => 'Peta',
+        'icon'  => 'bi-map',
+        'codes' => ['map', 'peta_deliniasi'],
+    ],
+    'akun' => [
+        'label' => 'Pengelolaan Akun',
+        'icon'  => 'bi-people',
+        'codes' => ['users', 'roles'],
+    ],
+    'data' => [
+        'label' => 'Penyajian Data',
+        'icon'  => 'bi-bar-chart-line',
+        'codes' => ['penyajian_data'],
+    ],
+];
+
+$menuItemsByKey = [];
+foreach ($menuItems as $mi) {
+    $menuItemsByKey[$mi['key']] = $mi;
+}
+
+// ===== (Fallback tanpa-DB sudah dihapus) =====
+// laporan_penanaman, peta_deliniasi, dan penyajian_data sekarang sudah
+// terdaftar resmi di tabel `menus` (lihat db/migration_add_missing_menus.sql),
+// jadi $menuItems dari Rbac::accessibleMenus() di atas sudah otomatis
+// mencakup ketiganya sesuai izin per-role masing-masing. Tidak perlu lagi
+// disuntik manual di sini.
+
+// 'dashboard' selalu tampil sendiri di atas, tidak masuk grup manapun
+$groupedCodes = ['dashboard'];
+foreach ($menuGroupDefs as $g) {
+    $groupedCodes = array_merge($groupedCodes, $g['codes']);
+}
+
+// Susun grup akhir: hanya grup yang minimal punya 1 item yang boleh dilihat user ini
+$sidebarGroups = [];
+foreach ($menuGroupDefs as $groupKey => $g) {
+    $items = [];
+    foreach ($g['codes'] as $code) {
+        if (isset($menuItemsByKey[$code])) {
+            $items[] = $menuItemsByKey[$code];
+        }
+    }
+    if ($items) {
+        $sidebarGroups[$groupKey] = ['label' => $g['label'], 'icon' => $g['icon'], 'items' => $items];
+    }
+}
+
+// Menu yang tidak masuk ke grup manapun (mis. menu baru yang belum dipetakan)
+// tetap ditampilkan sebagai item lepas di bawah "Lainnya", supaya tidak
+// pernah ada menu yang hilang hanya karena lupa dipetakan.
+$looseItems = [];
+foreach ($menuItems as $mi) {
+    if (!in_array($mi['key'], $groupedCodes, true)) {
+        $looseItems[] = $mi;
+    }
+}
+
+// Grup mana yang harus otomatis terbuka (mengandung halaman aktif saat ini)
+$activeGroupKey = null;
+foreach ($sidebarGroups as $groupKey => $g) {
+    foreach ($g['items'] as $it) {
+        if ($it['key'] === $activePage) {
+            $activeGroupKey = $groupKey;
+            break 2;
+        }
+    }
+}
 ?>
 
 <!-- Sidebar Overlay for Mobile -->
@@ -48,11 +141,13 @@ $menuItems = array_map(function ($m) {
     </div>
 
     <!-- Navigation Menu -->
-    <nav style="padding:1rem 0.75rem; flex:1;">
+    <nav style="padding:1rem 0.75rem; flex:1; overflow-y:auto;">
         <div style="font-size:0.65rem; font-weight:600; letter-spacing:1px; color:rgba(255,255,255,0.35); padding:0 0.5rem 0.5rem; text-transform:uppercase;">Menu Utama</div>
-        <ul class="list-unstyled mb-0">
-            <?php foreach ($menuItems as $item): ?>
-            <?php $isActive = ($activePage === $item['key']); ?>
+
+        <!-- Dashboard (selalu di atas, di luar grup) -->
+        <?php if (isset($menuItemsByKey['dashboard'])): ?>
+        <?php $item = $menuItemsByKey['dashboard']; $isActive = ($activePage === $item['key']); ?>
+        <ul class="list-unstyled mb-1">
             <li class="mb-1">
                 <a href="<?= $item['href'] ?>"
                    class="d-flex align-items-center gap-3 px-3 py-2 rounded-2 text-decoration-none sidebar-link <?= $isActive ? 'active' : '' ?>"
@@ -69,24 +164,92 @@ $menuItems = array_map(function ($m) {
                     <?php endif; ?>
                 </a>
             </li>
-            <?php endforeach; ?>
         </ul>
+        <?php endif; ?>
 
-        <!-- Divider -->
-        <div style="border-top:1px solid rgba(255,255,255,0.08); margin:1rem 0;"></div>
+        <!-- Grup Menu (Pemeliharaan, Penebangan, Inventarisasi, Peta, dst) -->
+        <!-- Judul kategori + chevron, bisa dibuka/tutup. Grup yang berisi -->
+        <!-- halaman aktif otomatis terbuka, sisanya tertutup (hemat tempat). -->
+        <?php foreach ($sidebarGroups as $groupKey => $group): ?>
+        <?php
+            $groupHasActive = ($activeGroupKey === $groupKey);
+            $collapseId     = 'menuGroup-' . $groupKey;
+        ?>
+        <div style="margin-top:0.35rem;">
+            <a href="#<?= $collapseId ?>" data-bs-toggle="collapse" role="button"
+               aria-expanded="<?= $groupHasActive ? 'true' : 'false' ?>" aria-controls="<?= $collapseId ?>"
+               class="d-flex align-items-center gap-2 text-decoration-none sidebar-group-toggle"
+               style="padding:0.4rem 0.5rem;">
+                <i class="bi <?= $group['icon'] ?>" style="font-size:0.8rem; color:rgba(255,255,255,0.5); width:16px; text-align:center; flex-shrink:0;"></i>
+                <span style="font-size:0.7rem; font-weight:700; letter-spacing:0.5px; color:rgba(255,255,255,0.55); text-transform:uppercase; flex:1;"><?= htmlspecialchars($group['label']) ?></span>
+                <i class="bi bi-chevron-down sidebar-chevron" style="font-size:0.65rem; color:rgba(255,255,255,0.4); transition:transform 0.2s ease; flex-shrink:0;"></i>
+            </a>
+            <div class="collapse <?= $groupHasActive ? 'show' : '' ?>" id="<?= $collapseId ?>">
+                <ul class="list-unstyled mb-0" style="padding-top:0.15rem;">
+                    <?php foreach ($group['items'] as $item): ?>
+                    <?php $isActive = ($activePage === $item['key']); ?>
+                    <li class="mb-1">
+                        <a href="<?= $item['href'] ?>"
+                           class="d-flex align-items-center gap-3 px-3 py-2 rounded-2 text-decoration-none sidebar-link <?= $isActive ? 'active' : '' ?>"
+                           style="
+                               color: <?= $isActive ? '#fff' : 'rgba(255,255,255,0.72)' ?>;
+                               background: <?= $isActive ? 'rgba(255,255,255,0.12)' : 'transparent' ?>;
+                               font-weight: <?= $isActive ? '600' : '400' ?>;
+                               transition: all 0.18s ease;
+                           ">
+                            <i class="bi <?= $item['icon'] ?>" style="font-size:1.05rem; width:20px; text-align:center; flex-shrink:0;"></i>
+                            <span style="font-size:0.875rem;"><?= $item['label'] ?></span>
+                            <?php if ($isActive): ?>
+                            <span class="ms-auto" style="width:5px; height:5px; border-radius:50%; background:#4ade80; flex-shrink:0;"></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+        <?php endforeach; ?>
 
-        <!-- Menu Peta (Eksternal) -->
-        <!--<ul class="list-unstyled mb-0">
-            <li class="mb-1">                
-                <a href="../map.php" target="_blank"
-                   class="d-flex align-items-center gap-3 px-3 py-2 rounded-2 text-decoration-none"
-                   style="color:rgba(255,255,255,0.72); transition:all 0.18s ease;">
-                    <i class="bi bi-map" style="font-size:1.05rem; width:20px; text-align:center;"></i>
-                    <span style="font-size:0.875rem;">Peta</span>
-                    <i class="bi bi-arrow-up-right ms-auto" style="font-size:0.7rem; opacity:0.5;"></i>
-                </a>
-            </li>
-        </ul>-->
+        <?php if ($looseItems): ?>
+        <div style="margin-top:0.35rem;">
+            <?php
+                $looseId = 'menuGroup-lainnya';
+                $looseHasActive = false;
+                foreach ($looseItems as $li) { if ($li['key'] === $activePage) { $looseHasActive = true; break; } }
+            ?>
+            <a href="#<?= $looseId ?>" data-bs-toggle="collapse" role="button"
+               aria-expanded="<?= $looseHasActive ? 'true' : 'false' ?>" aria-controls="<?= $looseId ?>"
+               class="d-flex align-items-center gap-2 text-decoration-none sidebar-group-toggle"
+               style="padding:0.4rem 0.5rem;">
+                <i class="bi bi-three-dots" style="font-size:0.8rem; color:rgba(255,255,255,0.5); width:16px; text-align:center; flex-shrink:0;"></i>
+                <span style="font-size:0.7rem; font-weight:700; letter-spacing:0.5px; color:rgba(255,255,255,0.55); text-transform:uppercase; flex:1;">Lainnya</span>
+                <i class="bi bi-chevron-down sidebar-chevron" style="font-size:0.65rem; color:rgba(255,255,255,0.4); transition:transform 0.2s ease; flex-shrink:0;"></i>
+            </a>
+            <div class="collapse <?= $looseHasActive ? 'show' : '' ?>" id="<?= $looseId ?>">
+                <ul class="list-unstyled mb-0" style="padding-top:0.15rem;">
+                    <?php foreach ($looseItems as $item): ?>
+                    <?php $isActive = ($activePage === $item['key']); ?>
+                    <li class="mb-1">
+                        <a href="<?= $item['href'] ?>"
+                           class="d-flex align-items-center gap-3 px-3 py-2 rounded-2 text-decoration-none sidebar-link <?= $isActive ? 'active' : '' ?>"
+                           style="
+                               color: <?= $isActive ? '#fff' : 'rgba(255,255,255,0.72)' ?>;
+                               background: <?= $isActive ? 'rgba(255,255,255,0.12)' : 'transparent' ?>;
+                               font-weight: <?= $isActive ? '600' : '400' ?>;
+                               transition: all 0.18s ease;
+                           ">
+                            <i class="bi <?= $item['icon'] ?>" style="font-size:1.05rem; width:20px; text-align:center; flex-shrink:0;"></i>
+                            <span style="font-size:0.875rem;"><?= $item['label'] ?></span>
+                            <?php if ($isActive): ?>
+                            <span class="ms-auto" style="width:5px; height:5px; border-radius:50%; background:#4ade80; flex-shrink:0;"></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+        <?php endif; ?>
     </nav>
 
     <!-- Profile & Logout (Bottom) -->
@@ -191,8 +354,15 @@ $menuItems = array_map(function ($m) {
     <div class="main-content">
 
 <style>
+.sidebar-link:hover,
+.sidebar-group-toggle:hover .sidebar-chevron,
+.sidebar-group-toggle:hover span {
+    color: #fff !important;
+}
 .sidebar-link:hover {
     background: rgba(255,255,255,0.08) !important;
-    color: #fff !important;
+}
+.sidebar-group-toggle[aria-expanded="true"] .sidebar-chevron {
+    transform: rotate(180deg);
 }
 </style>
