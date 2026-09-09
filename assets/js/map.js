@@ -363,10 +363,46 @@ function treePointOptions(tree) {
     };
 }
 
+// Marker pohon yang sedang dipilih (diklik terakhir) — dipakai untuk
+// mengembalikan warna simbolnya ke kondisi normal saat popup ditutup
+// atau saat pohon lain diklik.
+let selectedTreeMarker = null;
+
+/** Style simbol pohon saat sedang dipilih (diklik) di peta. */
+function treePointSelectedOptions(tree) {
+    const base = treePointOptions(tree);
+    return {
+        ...base,
+        radius: base.radius + 2.5,
+        color: '#facc15', // cincin kuning menandakan pohon yang sedang dipilih
+        weight: 3,
+    };
+}
+
+/** Tandai satu marker pohon sebagai "dipilih" (ubah warna simbolnya) di peta. */
+function selectTreeMarker(marker) {
+    if (selectedTreeMarker && selectedTreeMarker !== marker) {
+        selectedTreeMarker.setStyle(treePointOptions(selectedTreeMarker.treeData));
+    }
+    marker.setStyle(treePointSelectedOptions(marker.treeData));
+    selectedTreeMarker = marker;
+}
+
+/** Kembalikan warna simbol pohon yang sedang dipilih ke kondisi normal. */
+function clearSelectedTreeMarker() {
+    if (selectedTreeMarker) {
+        selectedTreeMarker.setStyle(treePointOptions(selectedTreeMarker.treeData));
+        selectedTreeMarker = null;
+    }
+}
+
 function addTreePoint(tree) {
     const point = L.circleMarker([tree.lat, tree.lng], treePointOptions(tree));
     point.treeData = tree;
-    point.on('click', () => showTreePopup(tree, point));
+    point.on('click', () => {
+        selectTreeMarker(point);
+        showTreePopup(tree, point);
+    });
     layerGroups.dbPohon.addLayer(point);
 }
 
@@ -448,6 +484,12 @@ function addTreeCluster(cluster) {
 
 function refreshTreePointPresentation() {
     if (!map) return;
+
+    // Marker lama akan dibuang & dibuat ulang di bawah, jadi referensi ke
+    // marker yang sedang "dipilih" (warna disorot) tidak berlaku lagi —
+    // cukup lupakan referensinya (tanpa memanggil setStyle ke marker yang
+    // sudah tidak ada di peta).
+    selectedTreeMarker = null;
 
     layerGroups.dbPohon.clearLayers();
     const visibleTrees = getVisibleTrees();
@@ -773,6 +815,7 @@ function showTreePopup(tree, marker) {
 
 function closeTreePopup() {
     document.getElementById('tree-popup-card').classList.remove('open');
+    clearSelectedTreeMarker();
 }
 
 
@@ -837,6 +880,64 @@ function bindReferenceTreeLayerToggles() {
     });
 }
 
+// ---------------- Info luas total per layer ----------------
+// Skema terbaru 20 Agustus 2026, poin Peta #4: saat layer "Ruang
+// Terbuka Hijau" atau "Tajuk Pohon" dinyalakan, tampilkan luas
+// totalnya (dari data deliniasi yang sudah didigitasi — lihat
+// api/layer_luas.php). Hasilnya di-cache supaya tidak fetch berulang
+// tiap kali layer dimatikan/dinyalakan dalam 1 sesi.
+let layerLuasCache = null;
+let layerLuasBadge = null;
+
+async function getLayerLuasData() {
+    if (layerLuasCache) return layerLuasCache;
+    try {
+        const res = await fetch('api/layer_luas.php');
+        const json = await res.json();
+        if (json.success) layerLuasCache = json.layers;
+    } catch (e) {
+        console.error('Gagal memuat data luas layer', e);
+    }
+    return layerLuasCache;
+}
+
+function ensureLayerLuasBadge() {
+    if (layerLuasBadge) return layerLuasBadge;
+    const badge = document.createElement('div');
+    badge.id = 'layer-luas-badge';
+    badge.style.cssText = 'position:fixed; z-index:900; left:50%; bottom:28px; transform:translateX(-50%); background:#fff; border-radius:10px; box-shadow:0 4px 16px rgba(0,0,0,.18); padding:.6rem .9rem; font-size:.8rem; display:none; max-width:280px; line-height:1.4; text-align:center;';
+    document.body.appendChild(badge);
+    layerLuasBadge = badge;
+    return badge;
+}
+
+async function showLayerLuas(layerKey) {
+    const data = await getLayerLuasData();
+    const info = data && data[layerKey];
+    const badge = ensureLayerLuasBadge();
+    if (!info) { badge.style.display = 'none'; return; }
+
+    if (!info.available) {
+        badge.innerHTML = `<strong>${info.label}</strong><br><span class="text-muted">Luas total belum tersedia (${info.alasan})</span>`;
+    } else if (layerKey === 'green') {
+        badge.innerHTML = `<strong>${info.label}</strong><br>Luas total: ${info.luas_ha.toLocaleString('id-ID')} ha` +
+            (typeof info.persen_kota === 'number' ? ` (&asymp; ${info.persen_kota}% luas kota)` : '');
+    } else {
+        badge.innerHTML = `<strong>${info.label}</strong><br>Luas total: ${info.luas_ha.toLocaleString('id-ID')} ha`;
+    }
+    badge.style.display = 'block';
+}
+
+function hideLayerLuasBadgeIfMatches(layerKey, activeKeys) {
+    // Sembunyikan badge hanya kalau tidak ada lagi layer (dari yang
+    // punya info luas) yang masih menyala, supaya tidak menutupi info
+    // layer lain yang mungkin masih aktif.
+    const stillActive = activeKeys.some((k) => document.getElementById(k)?.checked);
+    if (!stillActive && layerLuasBadge) {
+        layerLuasBadge.style.display = 'none';
+    }
+}
+
 // ---------------- Layer toggle binding ----------------
 function bindLayerToggles() {
 
@@ -870,6 +971,23 @@ function bindLayerToggles() {
                 group.addTo(map);
             } else {
                 map.removeLayer(group);
+            }
+
+            // Info luas total: hanya untuk layer yang punya data luas
+            // (lihat api/layer_luas.php) — RTH, Tajuk, Tutupan Lahan, Lahan Kritis.
+            const luasLayerMap = {
+                'layer-green': 'green',
+                'layer-pucuk': 'pucuk',
+                'layer-tutupan-lahan': 'tutupan-lahan',
+                'layer-lahan-kritis': 'lahan-kritis',
+            };
+            const luasKey = luasLayerMap[id];
+            if (luasKey) {
+                if (checkbox.checked) {
+                    showLayerLuas(luasKey);
+                } else {
+                    hideLayerLuasBadgeIfMatches(luasKey, Object.keys(luasLayerMap));
+                }
             }
         });
 

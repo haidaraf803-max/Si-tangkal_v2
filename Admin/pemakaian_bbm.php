@@ -20,24 +20,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add'])) {
         $alertMsg  = 'Peran Anda tidak memiliki izin menambah data pemakaian BBM.';
         $alertType = 'warning';
     } else {
-        $bukti = null;
-        if (!empty($_FILES['bukti']['name'])) {
-            $bukti = 'bbm_' . time() . '_' . basename($_FILES['bukti']['name']);
-            move_uploaded_file($_FILES['bukti']['tmp_name'], __DIR__ . '/../assets/foto/' . $bukti);
-        }
+        // Bukti struk dihapus dari alur input (sesuai update kebutuhan).
         $ok = $model->create([
-            'tanggal'        => $_POST['tanggal'] ?? date('Y-m-d'),
-            'terima_dari'    => trim($_POST['terima_dari'] ?? ''),
-            'penerima'       => trim($_POST['penerima'] ?? ''),
-            'keperluan'      => trim($_POST['keperluan'] ?? ''),
-            'jumlah_kupon'   => trim($_POST['jumlah_kupon'] ?? ''),
-            'nominal_kupon'  => trim($_POST['nominal_kupon'] ?? ''),
-            'jenis_bbm'      => trim($_POST['jenis_bbm'] ?? ''),
-            'jumlah_liter'   => trim($_POST['jumlah_liter'] ?? ''),
-            'nominal_rupiah' => (float) ($_POST['nominal_rupiah'] ?? 0),
-            'kendaraan'      => trim($_POST['kendaraan'] ?? ''),
-            'keterangan'     => trim($_POST['keterangan'] ?? ''),
-            'bukti'          => $bukti,
+            'tanggal'               => $_POST['tanggal'] ?? date('Y-m-d'),
+            'terima_dari'           => trim($_POST['terima_dari'] ?? ''),
+            'penerima'              => trim($_POST['penerima'] ?? ''),
+            'keperluan'             => trim($_POST['keperluan'] ?? ''),
+            'jumlah_kupon'          => trim($_POST['jumlah_kupon'] ?? ''),
+            'nominal_kupon'         => trim($_POST['nominal_kupon'] ?? ''),
+            'jumlah_kupon_pelumas'  => trim($_POST['jumlah_kupon_pelumas'] ?? ''),
+            'nominal_kupon_pelumas' => trim($_POST['nominal_kupon_pelumas'] ?? ''),
+            'jenis_bbm'             => trim($_POST['jenis_bbm'] ?? ''),
+            'jumlah_liter'          => trim($_POST['jumlah_liter'] ?? ''),
+            'nominal_rupiah'        => (float) ($_POST['nominal_rupiah'] ?? 0),
+            'kendaraan'             => trim($_POST['kendaraan'] ?? ''),
+            'keterangan'            => trim($_POST['keterangan'] ?? ''),
+            'bukti'                 => null,
         ], $currentUserId);
         $alertMsg  = $ok ? 'Data pemakaian BBM berhasil ditambahkan.' : 'Gagal menambahkan data.';
         $alertType = $ok ? 'success' : 'danger';
@@ -50,13 +48,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit'])) {
         $alertType = 'warning';
     } else {
         $ok = $model->update((int) $_POST['id'], [
-            'tanggal'       => $_POST['tanggal'] ?? date('Y-m-d'),
-            'terima_dari'   => trim($_POST['terima_dari'] ?? ''),
-            'penerima'      => trim($_POST['penerima'] ?? ''),
-            'keperluan'     => trim($_POST['keperluan'] ?? ''),
-            'jumlah_kupon'  => trim($_POST['jumlah_kupon'] ?? ''),
-            'nominal_kupon' => trim($_POST['nominal_kupon'] ?? ''),
-            'keterangan'    => trim($_POST['keterangan'] ?? ''),
+            'tanggal'               => $_POST['tanggal'] ?? date('Y-m-d'),
+            'terima_dari'           => trim($_POST['terima_dari'] ?? ''),
+            'penerima'              => trim($_POST['penerima'] ?? ''),
+            'keperluan'             => trim($_POST['keperluan'] ?? ''),
+            'jumlah_kupon'          => trim($_POST['jumlah_kupon'] ?? ''),
+            'nominal_kupon'         => trim($_POST['nominal_kupon'] ?? ''),
+            'jumlah_kupon_pelumas'  => trim($_POST['jumlah_kupon_pelumas'] ?? ''),
+            'nominal_kupon_pelumas' => trim($_POST['nominal_kupon_pelumas'] ?? ''),
+            'jenis_bbm'             => trim($_POST['jenis_bbm'] ?? ''),
+            'kendaraan'             => trim($_POST['kendaraan'] ?? ''),
+            'keterangan'            => trim($_POST['keterangan'] ?? ''),
         ]);
         $alertMsg  = $ok ? 'Data pemakaian BBM berhasil diperbarui.' : 'Gagal memperbarui data.';
         $alertType = $ok ? 'success' : 'danger';
@@ -74,14 +76,22 @@ if (isset($_GET['deleted'])) {
     $alertType = $_GET['deleted'] === 'forbidden' ? 'warning' : 'success';
 }
 
-$data = $model->getAll();
-$totalKuponBulanIni   = 0;
-$totalNominalBulanIni = 0;
+// ===== FILTER: tanggal terima (rentang) & tahun =====
+$fDari   = trim($_GET['dari'] ?? '');
+$fSampai = trim($_GET['sampai'] ?? '');
+$fTahun  = trim($_GET['tahun'] ?? '');
+
+$data = $model->getAll(['dari' => $fDari, 'sampai' => $fSampai, 'tahun' => $fTahun]);
+$availableYearsBbm = $model->getAvailableYears();
+
+// Total nominal & jumlah kupon mengikuti hasil filter yang sedang aktif
+// (termasuk kupon bensin + kupon pelumas), bukan lagi hard-coded "bulan ini".
+$totalKuponFilter   = 0;
+$totalNominalFilter = 0;
 foreach ($data as $row) {
-    if (date('Y-m', strtotime($row['tanggal'])) === date('Y-m')) {
-        $totalKuponBulanIni   += (int) ($row['jumlah_kupon'] ?? 0);
-        $totalNominalBulanIni += (float) ($row['nominal_kupon'] ?? $row['nominal_rupiah'] ?? 0);
-    }
+    $totalKuponFilter   += (int) ($row['jumlah_kupon'] ?? 0) + (int) ($row['jumlah_kupon_pelumas'] ?? 0);
+    $totalNominalFilter += (float) ($row['nominal_kupon'] ?? $row['nominal_rupiah'] ?? 0)
+                         + (float) ($row['nominal_kupon_pelumas'] ?? 0);
 }
 
 $pageTitle  = 'Pemakaian BBM';
@@ -167,15 +177,43 @@ require_once 'layouts/sidebar.php';
     </div>
     <div class="col-md-4">
         <div class="card"><div class="card-body">
-            <div class="text-muted" style="font-size:0.75rem;">Jumlah Kupon Bulan Ini</div>
-            <div class="fs-4 fw-bold"><?= number_format($totalKuponBulanIni, 0, ',', '.') ?> lembar</div>
+            <div class="text-muted" style="font-size:0.75rem;">Jumlah Kupon (sesuai filter)</div>
+            <div class="fs-4 fw-bold"><?= number_format($totalKuponFilter, 0, ',', '.') ?> lembar</div>
         </div></div>
     </div>
     <div class="col-md-4">
         <div class="card"><div class="card-body">
-            <div class="text-muted" style="font-size:0.75rem;">Total Nominal Bulan Ini</div>
-            <div class="fs-4 fw-bold">Rp <?= number_format($totalNominalBulanIni, 0, ',', '.') ?></div>
+            <div class="text-muted" style="font-size:0.75rem;">Total Nominal (sesuai filter)</div>
+            <div class="fs-4 fw-bold">Rp <?= number_format($totalNominalFilter, 0, ',', '.') ?></div>
         </div></div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:0.72rem;">Tanggal Terima Dari</label>
+                <input type="date" name="dari" class="form-control form-control-sm" value="<?= htmlspecialchars($fDari) ?>">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:0.72rem;">Sampai</label>
+                <input type="date" name="sampai" class="form-control form-control-sm" value="<?= htmlspecialchars($fSampai) ?>">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:0.72rem;">Tahun</label>
+                <select name="tahun" class="form-select form-select-sm">
+                    <option value="">Semua Tahun</option>
+                    <?php foreach ($availableYearsBbm as $th): ?>
+                    <option value="<?= htmlspecialchars($th) ?>" <?= $fTahun === $th ? 'selected' : '' ?>><?= htmlspecialchars($th) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-sm btn-outline-success flex-fill"><i class="bi bi-funnel"></i> Terapkan</button>
+                <a href="pemakaian_bbm.php" class="btn btn-sm btn-outline-secondary">Reset</a>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -190,8 +228,9 @@ require_once 'layouts/sidebar.php';
                         <th>Terima Dari</th>
                         <th>Penerima</th>
                         <th>Keperluan</th>
-                        <th class="text-center">Jumlah Kupon</th>
-                        <th class="text-end">Nominal Kupon</th>
+                        <th class="text-center">Kupon Bensin</th>
+                        <th class="text-center">Kupon Pelumas</th>
+                        <th class="text-end">Total Nominal</th>
                         <th class="text-center pe-3">Aksi</th>
                     </tr>
                 </thead>
@@ -204,7 +243,8 @@ require_once 'layouts/sidebar.php';
                             <td><?= htmlspecialchars($row['penerima'] ?? ($row['petugas_nama'] ?? '-')) ?></td>
                             <td><?= htmlspecialchars($row['keperluan'] ?? '-') ?></td>
                             <td class="text-center"><?= $row['jumlah_kupon'] !== null ? (int) $row['jumlah_kupon'] . ' lbr' : '-' ?></td>
-                            <td class="text-end">Rp <?= number_format((float) ($row['nominal_kupon'] ?? $row['nominal_rupiah'] ?? 0), 0, ',', '.') ?></td>
+                            <td class="text-center"><?= ($row['jumlah_kupon_pelumas'] ?? null) !== null ? (int) $row['jumlah_kupon_pelumas'] . ' lbr' : '-' ?></td>
+                            <td class="text-end">Rp <?= number_format((float) ($row['nominal_kupon'] ?? $row['nominal_rupiah'] ?? 0) + (float) ($row['nominal_kupon_pelumas'] ?? 0), 0, ',', '.') ?></td>
                             <td class="text-center pe-3">
                                 <button type="button" class="btn btn-sm btn-outline-secondary me-1"
                                         data-bs-toggle="modal" data-bs-target="#modalDetail<?= (int) $row['id'] ?>"
@@ -225,7 +265,7 @@ require_once 'layouts/sidebar.php';
                         </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <tr><td colspan="7" class="text-center text-muted py-5">Belum ada data pemakaian BBM</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-5">Belum ada data pemakaian BBM</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -253,23 +293,17 @@ require_once 'layouts/sidebar.php';
                 <div class="detail-row"><span class="detail-label">Terima Dari</span><span class="detail-value"><?= htmlspecialchars($row['terima_dari'] ?? '—') ?></span></div>
                 <div class="detail-row"><span class="detail-label">Penerima</span><span class="detail-value"><?= htmlspecialchars($row['penerima'] ?? ($row['petugas_nama'] ?? '—')) ?></span></div>
                 <div class="detail-row"><span class="detail-label">Keperluan</span><span class="detail-value"><?= htmlspecialchars($row['keperluan'] ?? '—') ?></span></div>
-                <div class="detail-row"><span class="detail-label">Jumlah Kupon</span><span class="detail-value"><?= $row['jumlah_kupon'] !== null ? (int) $row['jumlah_kupon'] . ' lembar' : '—' ?></span></div>
-                <div class="detail-row"><span class="detail-label">Nominal Kupon</span><span class="detail-value">Rp <?= number_format((float) ($row['nominal_kupon'] ?? $row['nominal_rupiah'] ?? 0), 0, ',', '.') ?></span></div>
+                <div class="detail-row"><span class="detail-label">Kupon Bensin</span><span class="detail-value"><?= $row['jumlah_kupon'] !== null ? (int) $row['jumlah_kupon'] . ' lembar' : '—' ?></span></div>
+                <div class="detail-row"><span class="detail-label">Nominal Kupon Bensin</span><span class="detail-value">Rp <?= number_format((float) ($row['nominal_kupon'] ?? $row['nominal_rupiah'] ?? 0), 0, ',', '.') ?></span></div>
+                <div class="detail-row"><span class="detail-label">Kupon Pelumas</span><span class="detail-value"><?= ($row['jumlah_kupon_pelumas'] ?? null) !== null ? (int) $row['jumlah_kupon_pelumas'] . ' lembar' : '—' ?></span></div>
+                <div class="detail-row"><span class="detail-label">Nominal Kupon Pelumas</span><span class="detail-value">Rp <?= number_format((float) ($row['nominal_kupon_pelumas'] ?? 0), 0, ',', '.') ?></span></div>
                 <?php if (!empty($row['jenis_bbm'])): ?>
                 <div class="detail-row"><span class="detail-label">Jenis BBM</span><span class="detail-value"><?= htmlspecialchars($row['jenis_bbm']) ?></span></div>
-                <?php endif; ?>
-                <?php if (!empty($row['jumlah_liter'])): ?>
-                <div class="detail-row"><span class="detail-label">Jumlah Liter</span><span class="detail-value"><?= htmlspecialchars($row['jumlah_liter']) ?> liter</span></div>
                 <?php endif; ?>
                 <?php if (!empty($row['kendaraan'])): ?>
                 <div class="detail-row"><span class="detail-label">Kendaraan</span><span class="detail-value"><?= htmlspecialchars($row['kendaraan']) ?></span></div>
                 <?php endif; ?>
                 <div class="detail-row"><span class="detail-label">Keterangan</span><span class="detail-value"><?= $row['keterangan'] ? nl2br(htmlspecialchars($row['keterangan'])) : '—' ?></span></div>
-                <?php if (!empty($row['bukti'])): ?>
-                    <img src="../assets/foto/<?= htmlspecialchars($row['bukti']) ?>" class="detail-photo" alt="Bukti struk/kupon BBM">
-                <?php else: ?>
-                    <div class="detail-photo-empty"><i class="bi bi-image me-1"></i>Tidak ada bukti/foto</div>
-                <?php endif; ?>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
@@ -323,18 +357,49 @@ require_once 'layouts/sidebar.php';
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-6">
-                        <label class="form-label">Jumlah Kupon <span class="text-danger">*</span></label>
+                        <label class="form-label">Jumlah Kupon Bensin <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="number" step="1" min="1" class="form-control" name="jumlah_kupon" value="<?= htmlspecialchars($row['jumlah_kupon'] ?? '') ?>" required>
                             <span class="input-group-text" style="border-radius:0 10px 10px 0;border-left:0;">lbr</span>
                         </div>
                     </div>
                     <div class="col-6">
-                        <label class="form-label">Nominal Kupon <span class="text-danger">*</span></label>
+                        <label class="form-label">Nominal Kupon Bensin <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">Rp</span>
                             <input type="number" step="1" class="form-control" name="nominal_kupon" value="<?= htmlspecialchars($row['nominal_kupon'] ?? '') ?>" required>
                         </div>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Jumlah Kupon Pelumas</label>
+                        <div class="input-group">
+                            <input type="number" step="1" min="0" class="form-control" name="jumlah_kupon_pelumas" value="<?= htmlspecialchars($row['jumlah_kupon_pelumas'] ?? '') ?>">
+                            <span class="input-group-text" style="border-radius:0 10px 10px 0;border-left:0;">lbr</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Nominal Kupon Pelumas</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Rp</span>
+                            <input type="number" step="1" class="form-control" name="nominal_kupon_pelumas" value="<?= htmlspecialchars($row['nominal_kupon_pelumas'] ?? '') ?>">
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Jenis BBM</label>
+                        <select class="form-select" name="jenis_bbm">
+                            <option value="">-</option>
+                            <?php foreach (['Pertalite', 'Pertamax', 'Solar'] as $jb): ?>
+                            <option value="<?= $jb ?>" <?= ($row['jenis_bbm'] ?? '') === $jb ? 'selected' : '' ?>><?= $jb ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Kendaraan</label>
+                        <input type="text" class="form-control" name="kendaraan" value="<?= htmlspecialchars($row['kendaraan'] ?? '') ?>" placeholder="Plat nomor">
                     </div>
                 </div>
                 <div class="mb-1">
@@ -354,7 +419,7 @@ require_once 'layouts/sidebar.php';
 
 <div class="modal fade" id="modalTambah" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form method="POST" enctype="multipart/form-data" class="modal-content">
+        <form method="POST" class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="bi bi-fuel-pump text-success me-2"></i>Catat Pemakaian BBM</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -380,39 +445,42 @@ require_once 'layouts/sidebar.php';
                 </div>
                 <div class="row g-2 mb-3">
                     <div class="col-6">
-                        <label class="form-label">Jumlah Kupon <span class="text-danger">*</span></label>
+                        <label class="form-label">Jumlah Kupon Bensin <span class="text-danger">*</span></label>
                         <input type="number" step="1" min="1" class="form-control" name="jumlah_kupon" required>
                     </div>
                     <div class="col-6">
-                        <label class="form-label">Nominal Kupon (Rp) <span class="text-danger">*</span></label>
+                        <label class="form-label">Nominal Kupon Bensin (Rp) <span class="text-danger">*</span></label>
                         <input type="number" step="1" class="form-control" name="nominal_kupon" required>
                     </div>
                 </div>
-                <details class="mb-3">
-                    <summary class="text-muted" style="font-size:0.8rem; cursor:pointer;">Detail tambahan (opsional)</summary>
-                    <div class="row g-2 mt-2">
-                        <div class="col-6">
-                            <label class="form-label">Jenis BBM</label>
-                            <select class="form-select" name="jenis_bbm">
-                                <option value="">-</option>
-                                <option value="Pertalite">Pertalite</option>
-                                <option value="Pertamax">Pertamax</option>
-                                <option value="Solar">Solar</option>
-                            </select>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Kendaraan</label>
-                            <input type="text" class="form-control" name="kendaraan" placeholder="Plat nomor">
-                        </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Jumlah Kupon Pelumas</label>
+                        <input type="number" step="1" min="0" class="form-control" name="jumlah_kupon_pelumas" placeholder="0">
                     </div>
-                </details>
-                <div class="mb-3">
-                    <label class="form-label">Keterangan</label>
-                    <textarea class="form-control" name="keterangan" rows="2"></textarea>
+                    <div class="col-6">
+                        <label class="form-label">Nominal Kupon Pelumas (Rp)</label>
+                        <input type="number" step="1" class="form-control" name="nominal_kupon_pelumas" placeholder="0">
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Jenis BBM</label>
+                        <select class="form-select" name="jenis_bbm">
+                            <option value="">-</option>
+                            <option value="Pertalite">Pertalite</option>
+                            <option value="Pertamax">Pertamax</option>
+                            <option value="Solar">Solar</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Kendaraan</label>
+                        <input type="text" class="form-control" name="kendaraan" placeholder="Plat nomor">
+                    </div>
                 </div>
                 <div class="mb-1">
-                    <label class="form-label">Bukti (struk/kupon)</label>
-                    <input type="file" class="form-control" name="bukti" accept="image/*">
+                    <label class="form-label">Keterangan</label>
+                    <textarea class="form-control" name="keterangan" rows="2"></textarea>
                 </div>
             </div>
             <div class="modal-footer">

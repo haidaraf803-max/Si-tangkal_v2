@@ -54,7 +54,11 @@ $stats = TreeRepository::stats();
             <div class="legend-item"><span class="legend-swatch sehat"></span> Pohon Sehat</div>
             <div class="legend-item"><span class="legend-swatch kurang-sehat"></span> Pohon Kurang Sehat</div>
             <div class="legend-item"><span class="legend-swatch sakit"></span> Pohon Sakit</div>
+            <div class="legend-item"><span class="legend-swatch selected"></span> Pohon Dipilih (Diklik)</div>
             <div class="legend-item"><span class="legend-swatch square green"></span> Ruang Terbuka Hijau</div>
+            <div class="legend-item"><span class="legend-swatch square pucuk"></span> Tajuk Pohon</div>
+            <div class="legend-item"><span class="legend-swatch square tutupan-lahan"></span> Tutupan Lahan IKTL</div>
+            <div class="legend-item"><span class="legend-swatch square lahan-kritis"></span> Lahan Kritis</div>
             <div class="legend-item"><span class="legend-swatch outline"></span> Batas Kelurahan</div>
         </div>
     </div>

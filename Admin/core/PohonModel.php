@@ -49,6 +49,62 @@ class PohonModel
     }
 
     /**
+     * Ambil daftar nilai unik pada satu kolom (untuk dropdown filter
+     * bergaya Excel — hanya menampilkan pilihan yang memang ada di data).
+     * Kolom dibatasi whitelist supaya aman dari SQL injection.
+     */
+    public function getDistinct(string $column): array
+    {
+        $allowed = ['nama_lokal', 'kesehatan', 'nama_jalan'];
+        if (!in_array($column, $allowed, true)) {
+            return [];
+        }
+        $stmt = $this->conn->query(
+            "SELECT DISTINCT `{$column}` FROM pohon WHERE `{$column}` IS NOT NULL AND `{$column}` <> '' ORDER BY `{$column}` ASC"
+        );
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Ambil data pohon dengan kombinasi kata kunci bebas + filter kolom
+     * spesifik (nama lokal, kondisi/kesehatan, nama jalan). Semua
+     * parameter opsional; string kosong berarti tidak difilter pada
+     * kolom tersebut. Dipakai halaman Admin/pohon.php.
+     */
+    public function filter(string $keyword = '', string $namaLokal = '', string $kondisi = '', string $namaJalan = ''): array
+    {
+        $where  = [];
+        $params = [];
+
+        if ($keyword !== '') {
+            $where[] = "(nama_lokal LIKE :kw OR nama_jalan LIKE :kw OR kesehatan LIKE :kw)";
+            $params[':kw'] = "%{$keyword}%";
+        }
+        if ($namaLokal !== '') {
+            $where[] = "nama_lokal = :nama_lokal";
+            $params[':nama_lokal'] = $namaLokal;
+        }
+        if ($kondisi !== '') {
+            $where[] = "kesehatan = :kesehatan";
+            $params[':kesehatan'] = $kondisi;
+        }
+        if ($namaJalan !== '') {
+            $where[] = "nama_jalan = :nama_jalan";
+            $params[':nama_jalan'] = $namaJalan;
+        }
+
+        $sql = "SELECT * FROM pohon";
+        if ($where) {
+            $sql .= " WHERE " . implode(" AND ", $where);
+        }
+        $sql .= " ORDER BY id DESC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
      * Ambil N data pohon terbaru untuk tampilan dashboard.
      */
     public function getLatest(int $limit = 10): array

@@ -34,8 +34,8 @@ $alertMsg  = '';
 $alertType = '';
 
 // Peran yang berhak melakukan tiap aksi (superadmin selalu boleh)
+// Langkah "Divalidasi" oleh Validator sudah dihapus dari alur.
 $bolehSurvey    = $canEditPengajuan && ($isSuperadmin || $myRoleCode === 'petugas_survey');
-$bolehValidasi  = $canEditPengajuan && ($isSuperadmin || $myRoleCode === 'validator');
 $bolehEksekusi  = $canEditPengajuan && ($isSuperadmin || $myRoleCode === 'tim_tangkas');
 
 // ===== AKSI: SUBMIT HASIL SURVEY (Petugas Survey) =====
@@ -55,44 +55,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_action'] ?? '') === '
     }
 }
 
-// ===== AKSI: VALIDASI (Validator) =====
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_action'] ?? '') === 'validasi') {
-    if (!$bolehValidasi) {
-        $alertMsg  = 'Peran Anda tidak berhak melakukan validasi.';
-        $alertType = 'warning';
-    } else {
-        $approve = ($_POST['keputusan'] ?? '') === 'setuju';
-        $catatan = trim($_POST['catatan_validasi'] ?? '');
-        $ok = $model->validate($id, $currentUserId, $approve, $catatan);
-        $alertMsg  = $ok ? ($approve ? 'Pengajuan disetujui untuk dieksekusi.' : 'Pengajuan dikembalikan untuk disurvey ulang.') : 'Gagal menyimpan validasi.';
-        $alertType = $ok ? 'success' : 'danger';
-        if ($ok) {
-            $data = $model->getById($id);
-        }
-    }
-}
-
 // ===== AKSI: EKSEKUSI / DOKUMENTASI LAPANGAN (Tim Tangkas) =====
+// Langkah "Divalidasi" oleh Validator sudah dihapus. Setelah hasil survey
+// menyatakan "perlu_pemangkasan", Tim Tangkas langsung dapat mengunggah
+// foto sesudah penanganan di sini.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_action'] ?? '') === 'eksekusi') {
     if (!$bolehEksekusi) {
         $alertMsg  = 'Peran Anda tidak berhak mengunggah dokumentasi eksekusi.';
         $alertType = 'warning';
     } else {
         $uploadDir = __DIR__ . '/../images/';
-        $fotoSebelumName = '';
         $fotoSesudahName = '';
 
-        if (!empty($_FILES['foto_sebelum']['name'])) {
-            $fotoSebelumName = 'sebelum_' . $id . '_' . time() . '_' . basename($_FILES['foto_sebelum']['name']);
-            move_uploaded_file($_FILES['foto_sebelum']['tmp_name'], $uploadDir . $fotoSebelumName);
-        }
         if (!empty($_FILES['foto_sesudah']['name'])) {
             $fotoSesudahName = 'sesudah_' . $id . '_' . time() . '_' . basename($_FILES['foto_sesudah']['name']);
             move_uploaded_file($_FILES['foto_sesudah']['tmp_name'], $uploadDir . $fotoSesudahName);
         }
 
-        $ok = $model->eksekusi($id, $currentUserId, $fotoSebelumName, $fotoSesudahName);
-        $alertMsg  = $ok ? 'Dokumentasi eksekusi berhasil disimpan, pengajuan selesai.' : 'Gagal menyimpan dokumentasi eksekusi.';
+        $ok = $model->eksekusi($id, $currentUserId, $fotoSesudahName);
+        $alertMsg  = $ok ? 'Foto sesudah penanganan berhasil disimpan, pengajuan selesai.' : 'Gagal menyimpan dokumentasi eksekusi.';
         $alertType = $ok ? 'success' : 'danger';
         if ($ok) {
             $data = $model->getById($id);
@@ -130,15 +111,19 @@ require_once 'layouts/sidebar.php';
 
         <!-- ======= TIMELINE STATUS TAHAP ======= -->
         <?php
+        // Catatan: langkah "Divalidasi" oleh Validator sudah dihapus dari alur.
         $tahapan = [
             'diajukan'   => ['label' => 'Diajukan',    'icon' => 'bi-file-earmark-plus'],
             'disurvey'   => ['label' => 'Disurvey',    'icon' => 'bi-binoculars'],
-            'divalidasi' => ['label' => 'Divalidasi',  'icon' => 'bi-patch-check'],
-            'ditangani'  => ['label' => 'Ditangani',   'icon' => 'bi-tools'],
             'selesai'    => ['label' => 'Selesai',     'icon' => 'bi-check-circle'],
         ];
         $urutan = array_keys($tahapan);
         $tahapSekarang = $data['status_tahap'] ?? 'diajukan';
+        // Data lama yang masih berstatus 'divalidasi'/'ditangani' otomatis
+        // dianggap sudah "disurvey" (siap dieksekusi Tim Tangkas).
+        if (in_array($tahapSekarang, ['divalidasi', 'ditangani'], true)) {
+            $tahapSekarang = 'disurvey';
+        }
         $indexSekarang = array_search($tahapSekarang, $urutan, true) ?: 0;
         ?>
         <div class="card mb-3">
@@ -312,45 +297,16 @@ require_once 'layouts/sidebar.php';
         </div>
         <?php endif; ?>
 
-        <?php if ($bolehValidasi && $tahapSekarang === 'disurvey'): ?>
-        <div class="card mt-3">
-            <div class="card-header"><i class="bi bi-patch-check text-success me-2"></i><strong>Validasi Hasil Survey</strong></div>
-            <div class="card-body">
-                <p class="text-muted" style="font-size:0.85rem;">Hasil survey: <strong><?= htmlspecialchars($data['hasil_survey'] ?? '-') ?></strong></p>
-                <form method="POST">
-                    <input type="hidden" name="form_action" value="validasi">
-                    <div class="mb-3">
-                        <label class="form-label">Keputusan <span class="text-danger">*</span></label>
-                        <select class="form-select" name="keputusan" required>
-                            <option value="setuju">Setujui — lanjut ke Tim Tangkas</option>
-                            <option value="tolak">Tolak — kembalikan untuk disurvey ulang</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Catatan Validasi</label>
-                        <textarea class="form-control" name="catatan_validasi" rows="3"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> Simpan Validasi</button>
-                </form>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <?php if ($bolehEksekusi && $tahapSekarang === 'divalidasi'): ?>
+        <?php if ($bolehEksekusi && $tahapSekarang === 'disurvey' && ($data['hasil_survey'] ?? '') === 'perlu_pemangkasan'): ?>
         <div class="card mt-3">
             <div class="card-header"><i class="bi bi-tools text-warning me-2"></i><strong>Dokumentasi Eksekusi Lapangan</strong></div>
             <div class="card-body">
+                <p class="text-muted" style="font-size:0.85rem;">Foto "sebelum" sudah tersedia dari foto wajib saat pengajuan dibuat. Tim Tangkas hanya perlu mengunggah foto sesudah penanganan.</p>
                 <form method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="form_action" value="eksekusi">
-                    <div class="row g-3">
-                        <div class="col-sm-6">
-                            <label class="form-label">Foto Sebelum</label>
-                            <input type="file" class="form-control" name="foto_sebelum" accept="image/*">
-                        </div>
-                        <div class="col-sm-6">
-                            <label class="form-label">Foto Sesudah</label>
-                            <input type="file" class="form-control" name="foto_sesudah" accept="image/*">
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Foto Sesudah <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" name="foto_sesudah" accept="image/*" required>
                     </div>
                     <button type="submit" class="btn btn-warning text-white mt-3"><i class="bi bi-upload me-1"></i> Simpan & Selesaikan</button>
                 </form>

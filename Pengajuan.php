@@ -14,8 +14,10 @@ if (isset($_POST['simpan'])) {
         $namaFileBaru = '';
         $status_action = null;
 
-        // Proses upload jika ada file
-        if (isset($_FILES['foto_pohon']) && $_FILES['foto_pohon']['error'] !== UPLOAD_ERR_NO_FILE) {
+        // Foto pohon WAJIB diisi pada pengajuan pemangkasan
+        if (!isset($_FILES['foto_pohon']) || $_FILES['foto_pohon']['error'] === UPLOAD_ERR_NO_FILE) {
+            $status_action = 'error_foto_wajib';
+        } else {
             $folder   = __DIR__ . '/images/';
             $allowed  = ['jpg', 'jpeg', 'png', 'gif'];
             $maxSize  = 5 * 1024 * 1024; // 5 MB
@@ -357,9 +359,9 @@ require_once __DIR__ . '/includes/site-header.php';
             </div>
 
             <div class="mb-4">
-              <label for="foto_pohon" class="form-label text-muted" style="font-size:0.9rem;">Foto Keadaan Pohon (Opsional)</label>
-              <input class="form-control" type="file" id="foto_pohon" name="foto_pohon" accept=".jpg,.jpeg,.png,.gif">
-              <div class="form-text" style="font-size:0.8rem;">Format: JPG, PNG, GIF. Maks: 5 MB</div>
+              <label for="foto_pohon" class="form-label text-muted" style="font-size:0.9rem;">Foto Keadaan Pohon <span class="text-danger">*</span></label>
+              <input class="form-control" type="file" id="foto_pohon" name="foto_pohon" accept=".jpg,.jpeg,.png,.gif" required>
+              <div class="form-text" style="font-size:0.8rem;">Wajib diisi. Format: JPG, PNG, GIF. Maks: 5 MB</div>
             </div>
 
             <button type="submit" name="simpan" class="btn btn-submit w-100">
@@ -491,6 +493,13 @@ document.addEventListener('DOMContentLoaded', function() {
     icon: 'error',
     title: 'Oops!',
     text: 'Terjadi kesalahan saat menyimpan data pengajuan Anda. Silakan coba lagi.'
+  });
+  <?php elseif ($status_action === 'error_foto_wajib'): ?>
+  Swal.fire({
+    icon: 'warning',
+    title: 'Foto Wajib Diisi',
+    text: 'Silakan lampirkan foto keadaan pohon sebelum mengirim pengajuan.',
+    confirmButtonColor: '#fd7e14'
   });
   <?php elseif ($status_action === 'error_format'): ?>
   Swal.fire({

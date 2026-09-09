@@ -13,6 +13,7 @@ $canEditPohon   = Rbac::can($config, 'pohon', 'edit');
 $canDeletePohon = Rbac::can($config, 'pohon', 'delete');
 require_once 'core/PohonModel.php';
 require_once 'core/PohonPendingModel.php';
+require_once 'core/PohonImportHelper.php';
 
 $model        = new PohonModel($config);
 $pendingModel = new PohonPendingModel($config);
@@ -180,9 +181,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 }
 
-// ===== SEARCH / GET ALL =====
-$keyword = trim($_GET['cari'] ?? '');
-$data    = $keyword ? $model->search($keyword) : $model->getAll();
+// ===== IMPORT DATA POHON DARI EXCEL/CSV =====
+$importSummary = null; // ['sukses' => int, 'gagal' => int, 'errors' => array]
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'import_excel') {
+    if (!$canCreatePohon) {
+        $alertMsg  = 'Peran Anda tidak memiliki izin menambah data pohon.';
+        $alertType = 'warning';
+    } elseif (empty($_FILES['file_import']) || ($_FILES['file_import']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        $alertMsg  = 'Silakan pilih file (.csv atau .xlsx) untuk diimport.';
+        $alertType = 'warning';
+    } else {
+        $importer = new PohonImportHelper();
+        $result   = $importer->readFile($_FILES['file_import']['tmp_name'], $_FILES['file_import']['name']);
+
+        if (!$result['header_ok']) {
+            $alertMsg  = 'Import gagal: ' . $result['error'];
+            $alertType = 'danger';
+        } else {
+            $sukses = 0;
+            $errors = [];
+            foreach ($result['rows'] as $i => $row) {
+                $baris = $i + 2; // +2: baris 1 = header, index mulai dari 0
+                $err   = $importer->validateRow($row);
+                if ($err !== null) {
+                    $errors[] = "Baris {$baris}: {$err}";
+                    continue;
+                }
+
+                $ok = $model->create(
+                    $row['nama_lokal'],
+                    $row['nama_latin']  ?? '',
+                    $row['family']      ?? '',
+                    $row['tahun_tanam'] ?? '',
+                    $row['habitus']     ?? '',
+                    $row['status_kel']  ?? '',
+                    (float) str_replace(',', '.', $row['volume']      ?? '0'),
+                    $row['kelas_awet']  ?? '',
+                    $row['kelas_kuat']  ?? '',
+                    (float) str_replace(',', '.', $row['berat_jenis'] ?? '0'),
+                    $row['kesehatan'],
+                    (float) str_replace(',', '.', $row['serapan_co']  ?? '0'),
+                    (float) str_replace(',', '.', $row['produksi_o']  ?? '0'),
+                    $row['nama_jalan'],
+                    $row['kelurahan']   ?? '',
+                    $row['kecamatan']   ?? '',
+                    (float) str_replace(',', '.', $row['koordinat_x']),
+                    (float) str_replace(',', '.', $row['koordinat_y']),
+                    $row['keterangan']  ?? '',
+                    $row['umur_pohon']  ?? ''
+                );
+
+                if ($ok !== false) {
+                    $sukses++;
+                } else {
+                    $errors[] = "Baris {$baris}: gagal menyimpan ke database";
+                }
+            }
+
+            $importSummary = ['sukses' => $sukses, 'gagal' => count($errors), 'errors' => $errors];
+            $alertType     = ($sukses > 0 && count($errors) === 0) ? 'success' : (($sukses > 0) ? 'warning' : 'danger');
+            $alertMsg      = "Import selesai: {$sukses} data berhasil ditambahkan" . (count($errors) ? ', ' . count($errors) . ' baris gagal (lihat rincian di bawah).' : '.');
+        }
+    }
+}
+
+// ===== SEARCH / FILTER (nama lokal, kondisi, nama jalan - bergaya filter Excel) =====
+$keyword     = trim($_GET['cari'] ?? '');
+$fNamaLokal  = trim($_GET['f_nama_lokal'] ?? '');
+$fKondisi    = trim($_GET['f_kondisi'] ?? '');
+$fNamaJalan  = trim($_GET['f_nama_jalan'] ?? '');
+$isFiltering = ($keyword !== '' || $fNamaLokal !== '' || $fKondisi !== '' || $fNamaJalan !== '');
+
+$data = $isFiltering
+    ? $model->filter($keyword, $fNamaLokal, $fKondisi, $fNamaJalan)
+    : $model->getAll();
+
+// Opsi dropdown filter (hanya menampilkan nilai yang benar-benar ada di data)
+$opsiNamaLokal = $model->getDistinct('nama_lokal');
+$opsiKondisi   = $model->getDistinct('kesehatan');
+$opsiNamaJalan = $model->getDistinct('nama_jalan');
 
 // Hitung ringkasan kondisi
 $totalSehat     = $model->countByKondisi('Sehat');
@@ -213,6 +290,9 @@ require_once 'layouts/sidebar.php';
             require 'layouts/export_modal.php';
         ?>
         <?php if ($canCreatePohon): ?>
+        <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportExcel">
+            <i class="bi bi-file-earmark-excel me-1"></i> Import Excel
+        </button>
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalTambah">
             <i class="bi bi-plus-lg me-1"></i> Tambah Pohon
         </button>
@@ -269,6 +349,59 @@ require_once 'layouts/sidebar.php';
 </div>
 <?php endif; ?>
 
+<!-- Rincian hasil Import Excel (kalau ada baris gagal) -->
+<?php if ($importSummary && !empty($importSummary['errors'])): ?>
+<div class="alert alert-warning">
+    <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle me-1"></i> Rincian baris gagal diimport:</div>
+    <ul class="mb-0" style="font-size:0.85rem; max-height:200px; overflow-y:auto;">
+        <?php foreach ($importSummary['errors'] as $err): ?>
+        <li><?= htmlspecialchars($err) ?></li>
+        <?php endforeach; ?>
+    </ul>
+</div>
+<?php endif; ?>
+
+<!-- ======= FILTER (bergaya Excel: dropdown dari data yang ada) ======= -->
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Nama Lokal</label>
+                <select name="f_nama_lokal" class="form-select form-select-sm">
+                    <option value="">-- Semua --</option>
+                    <?php foreach ($opsiNamaLokal as $opt): ?>
+                    <option value="<?= htmlspecialchars($opt) ?>" <?= $fNamaLokal === $opt ? 'selected' : '' ?>><?= htmlspecialchars($opt) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Kondisi</label>
+                <select name="f_kondisi" class="form-select form-select-sm">
+                    <option value="">-- Semua --</option>
+                    <?php foreach ($opsiKondisi as $opt): ?>
+                    <option value="<?= htmlspecialchars($opt) ?>" <?= $fKondisi === $opt ? 'selected' : '' ?>><?= htmlspecialchars($opt) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Nama Jalan</label>
+                <select name="f_nama_jalan" class="form-select form-select-sm">
+                    <option value="">-- Semua --</option>
+                    <?php foreach ($opsiNamaJalan as $opt): ?>
+                    <option value="<?= htmlspecialchars($opt) ?>" <?= $fNamaJalan === $opt ? 'selected' : '' ?>><?= htmlspecialchars($opt) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-success flex-fill"><i class="bi bi-funnel me-1"></i>Filter</button>
+                <?php if ($isFiltering): ?>
+                <a href="pohon.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x"></i></a>
+                <?php endif; ?>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- ======= TABLE ======= -->
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -276,6 +409,9 @@ require_once 'layouts/sidebar.php';
             <span class="badge bg-secondary ms-1"><?= count($data) ?></span>
         </span>
         <form method="GET" class="d-flex gap-2" style="min-width:240px;">
+            <input type="hidden" name="f_nama_lokal" value="<?= htmlspecialchars($fNamaLokal) ?>">
+            <input type="hidden" name="f_kondisi" value="<?= htmlspecialchars($fKondisi) ?>">
+            <input type="hidden" name="f_nama_jalan" value="<?= htmlspecialchars($fNamaJalan) ?>">
             <input type="text" name="cari" class="form-control form-control-sm"
                    placeholder="Cari nama / lokasi / kesehatan..."
                    value="<?= htmlspecialchars($keyword) ?>">
@@ -470,6 +606,42 @@ require_once 'layouts/sidebar.php';
 </div>
 
 <!-- ======= MODAL: TAMBAH POHON ======= -->
+<!-- ======= MODAL: IMPORT EXCEL ======= -->
+<div class="modal fade" id="modalImportExcel" tabindex="-1" aria-labelledby="modalImportExcelLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="import_excel">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalImportExcelLabel">
+                        <i class="bi bi-file-earmark-excel me-2"></i>Import Data Pohon dari Excel
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted" style="font-size:0.85rem;">
+                        Import banyak data pohon sekaligus dari file <strong>.xlsx</strong> atau <strong>.csv</strong>.
+                        Gunakan format template di bawah supaya kolom terbaca dengan benar. Data yang berhasil
+                        divalidasi akan langsung masuk ke Data Pohon.
+                    </p>
+                    <a href="template_import_pohon.php" class="btn btn-outline-success btn-sm mb-3">
+                        <i class="bi bi-download me-1"></i> Download Template
+                    </a>
+                    <div class="mb-2">
+                        <label class="form-label" for="file_import">Pilih File</label>
+                        <input type="file" id="file_import" name="file_import" class="form-control" accept=".csv,.xlsx" required>
+                        <div class="form-text">Format: CSV atau XLSX. Baris pertama harus header sesuai template.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-upload me-1"></i> Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalTambah" tabindex="-1" aria-labelledby="modalTambahLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="border-radius:var(--radius-lg); border:none; box-shadow:var(--shadow-lg);">

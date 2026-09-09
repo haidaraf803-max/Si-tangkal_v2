@@ -7,15 +7,16 @@ require_once __DIR__ . '/NotificationModel.php';
  * Kelas model untuk semua operasi CRUD pada tabel `pengajuan`.
  * Menggunakan PDO Prepared Statements untuk keamanan SQL Injection.
  *
- * Sejak migration_advanced.sql, tabel ini juga menyimpan status
- * alur berjenjang (status_tahap) sesuai dokumen kebutuhan:
- *   diajukan -> disurvey -> divalidasi -> ditangani -> selesai
+ * Alur berjenjang (status_tahap) sesuai kebutuhan terbaru — langkah
+ * "Divalidasi" oleh Validator sudah DIHAPUS dari alur. Alur sekarang:
+ *   diajukan -> disurvey -> selesai (jika hasil survey "tidak_perlu")
+ *   diajukan -> disurvey -> selesai (jika "perlu_pemangkasan", setelah
+ *              Tim Tangkas mengunggah foto sesudah pemangkasan)
  * Role ID di bawah mengacu pada seed tetap di db/migration_rbac.sql
  * (role bawaan / is_system=1, tidak berubah lewat UI Manajemen Role).
  */
 class PengajuanModel
 {
-    private const ROLE_VALIDATOR      = 3;
     private const ROLE_PETUGAS_SURVEY = 4;
     private const ROLE_TIM_TANGKAS    = 8;
     private const ROLE_ADMIN          = 2;
@@ -189,8 +190,9 @@ class PengajuanModel
 
     /**
      * Petugas Survey mengisi hasil survey lapangan.
-     * Jika hasil = 'tidak_perlu' -> alur langsung selesai (tidak perlu ke validator).
-     * Jika hasil = 'perlu_pemangkasan' -> notifikasi ke Validator untuk approval.
+     * Jika hasil = 'tidak_perlu' -> alur langsung selesai.
+     * Jika hasil = 'perlu_pemangkasan' -> notifikasi langsung ke Tim Tangkas
+     * untuk eksekusi (langkah Validator sudah dihapus dari alur).
      */
     public function submitSurvey(int $id, int $petugasId, string $hasil, string $catatan): bool
     {
@@ -231,59 +233,9 @@ class PengajuanModel
                 );
             } else {
                 $this->notif->notifyRole(
-                    self::ROLE_VALIDATOR,
-                    'Hasil Survey Menunggu Validasi',
-                    "Pengajuan \"{$data['No_Surat']}\" hasil survey menyatakan perlu pemangkasan, menunggu validasi Anda.",
-                    'detail_pengajuan.php?id=' . $id,
-                    $id
-                );
-            }
-        }
-
-        return $ok;
-    }
-
-    /**
-     * Validator menyetujui atau menolak hasil survey.
-     * Disetujui -> notifikasi ke Tim Tangkas untuk eksekusi.
-     * Ditolak   -> kembali ke tahap 'diajukan' supaya disurvey ulang.
-     */
-    public function validate(int $id, int $validatorId, bool $approve, string $catatan): bool
-    {
-        $data = $this->getById($id);
-        if (!$data) {
-            return false;
-        }
-
-        $stmt = $this->conn->prepare(
-            "UPDATE pengajuan SET
-                validator_id      = :validator,
-                validasi_catatan  = :catatan,
-                validasi_tanggal  = NOW(),
-                status_tahap      = :status
-             WHERE Id = :id"
-        );
-        $ok = $stmt->execute([
-            ':validator' => $validatorId,
-            ':catatan'   => $catatan,
-            ':status'    => $approve ? 'divalidasi' : 'diajukan',
-            ':id'        => $id,
-        ]);
-
-        if ($ok) {
-            if ($approve) {
-                $this->notif->notifyRole(
                     self::ROLE_TIM_TANGKAS,
                     'Siap Dieksekusi di Lapangan',
-                    "Pengajuan \"{$data['No_Surat']}\" telah divalidasi, silakan dokumentasikan sebelum & sesudah penanganan.",
-                    'detail_pengajuan.php?id=' . $id,
-                    $id
-                );
-            } else {
-                $this->notif->notifyRole(
-                    self::ROLE_PETUGAS_SURVEY,
-                    'Hasil Survey Ditolak Validator',
-                    "Pengajuan \"{$data['No_Surat']}\" perlu disurvey ulang. Catatan validator: {$catatan}",
+                    "Pengajuan \"{$data['No_Surat']}\" hasil survey menyatakan perlu pemangkasan. Silakan unggah foto sesudah penanganan.",
                     'detail_pengajuan.php?id=' . $id,
                     $id
                 );
@@ -294,9 +246,12 @@ class PengajuanModel
     }
 
     /**
-     * Tim Tangkas mengunggah dokumentasi sebelum/sesudah -> alur selesai.
+     * Tim Tangkas mengunggah dokumentasi sesudah penanganan -> alur selesai.
+     * Petugas Survey tidak berwenang menambah foto apapun; foto "sebelum"
+     * sudah didapat dari foto wajib saat pengajuan dibuat oleh pemohon,
+     * sehingga di tahap ini Tim Tangkas hanya mengunggah foto "sesudah".
      */
-    public function eksekusi(int $id, int $timId, string $fotoSebelum, string $fotoSesudah): bool
+    public function eksekusi(int $id, int $timId, string $fotoSesudah): bool
     {
         $data = $this->getById($id);
         if (!$data) {
@@ -308,7 +263,6 @@ class PengajuanModel
                 tim_tangkas_id    = :tim,
                 eksekusi_tanggal  = NOW(),
                 Tanggal_Penanganan= CURDATE(),
-                Dokumentasi       = COALESCE(NULLIF(:foto_sebelum, ''), Dokumentasi),
                 DokumentasiAfter  = COALESCE(NULLIF(:foto_sesudah, ''), DokumentasiAfter),
                 status_tahap      = 'selesai',
                 Keterangan        = 'Sudah'
@@ -316,19 +270,11 @@ class PengajuanModel
         );
         $ok = $stmt->execute([
             ':tim'          => $timId,
-            ':foto_sebelum' => $fotoSebelum,
             ':foto_sesudah' => $fotoSesudah,
             ':id'           => $id,
         ]);
 
         if ($ok) {
-            $this->notif->notifyRole(
-                self::ROLE_VALIDATOR,
-                'Penanganan Selesai',
-                "Pengajuan \"{$data['No_Surat']}\" telah selesai ditangani Tim Tangkas di lapangan.",
-                'detail_pengajuan.php?id=' . $id,
-                $id
-            );
             $this->notif->notifyRole(
                 self::ROLE_ADMIN,
                 'Penanganan Selesai',
@@ -339,5 +285,47 @@ class PengajuanModel
         }
 
         return $ok;
+    }
+
+    /**
+     * Ambil data pengajuan dengan filter opsional: kata kunci, tanggal
+     * (Disposisi_Surat), dan status (Keterangan Sudah/Belum).
+     */
+    public function filter(string $keyword = '', string $tanggal = '', string $status = ''): array
+    {
+        $sql    = "SELECT * FROM pengajuan WHERE 1=1";
+        $params = [];
+
+        if ($keyword !== '') {
+            $sql .= " AND (No_Surat LIKE :keyword OR Nama_Pemohon LIKE :keyword2)";
+            $params[':keyword']  = "%{$keyword}%";
+            $params[':keyword2'] = "%{$keyword}%";
+        }
+        if ($tanggal !== '') {
+            $sql .= " AND Disposisi_Surat = :tanggal";
+            $params[':tanggal'] = $tanggal;
+        }
+        if ($status !== '' && in_array($status, ['Sudah', 'Belum'], true)) {
+            $sql .= " AND Keterangan = :status";
+            $params[':status'] = $status;
+        }
+
+        $sql .= " ORDER BY Id DESC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Ambil daftar tanggal Disposisi_Surat unik, untuk dropdown filter
+     * (mirip filter Excel: hanya menampilkan tanggal yang benar-benar ada).
+     */
+    public function getDistinctTanggal(): array
+    {
+        $stmt = $this->conn->query(
+            "SELECT DISTINCT Disposisi_Surat FROM pengajuan WHERE Disposisi_Surat IS NOT NULL ORDER BY Disposisi_Surat DESC"
+        );
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 }

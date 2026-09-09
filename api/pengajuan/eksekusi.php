@@ -41,20 +41,17 @@ try {
     }
 
     $uploadDir = __DIR__ . '/../../images/';
-    $fotoSebelumName = '';
     $fotoSesudahName = '';
 
-    if (!empty($_FILES['foto_sebelum']['name'])) {
-        $fotoSebelumName = 'sebelum_' . $id . '_' . time() . '_' . basename($_FILES['foto_sebelum']['name']);
-        move_uploaded_file($_FILES['foto_sebelum']['tmp_name'], $uploadDir . $fotoSebelumName);
-    }
+    // Tim Tangkas hanya mengunggah foto SESUDAH penanganan.
+    // Foto "sebelum" sudah wajib diisi pemohon saat membuat pengajuan.
     if (!empty($_FILES['foto_sesudah']['name'])) {
         $fotoSesudahName = 'sesudah_' . $id . '_' . time() . '_' . basename($_FILES['foto_sesudah']['name']);
         move_uploaded_file($_FILES['foto_sesudah']['tmp_name'], $uploadDir . $fotoSesudahName);
     }
 
     $model = new PengajuanModel($pdo);
-    $ok = $model->eksekusi($id, $userId, $fotoSebelumName, $fotoSesudahName);
+    $ok = $model->eksekusi($id, $userId, $fotoSesudahName);
 
     echo json_encode(['success' => $ok, 'message' => $ok ? 'Dokumentasi eksekusi tersimpan, pengajuan selesai' : 'Gagal menyimpan dokumentasi']);
 

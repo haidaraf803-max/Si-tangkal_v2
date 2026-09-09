@@ -7,10 +7,19 @@ require_once __DIR__ . '/../config.php';
 // ===== AUTH CHECK (login SELALU di /login.php, di luar folder) =====
 Auth::requireLogin('../login.php');
 require_once 'core/Rbac.php';
+require_once 'core/NotificationModel.php';
 Rbac::requireAccess($config, 'permohonan_bibit', 'view');
 $canCreateBibit = Rbac::can($config, 'permohonan_bibit', 'create');
 $canEditBibit   = Rbac::can($config, 'permohonan_bibit', 'edit');
 $canDeleteBibit = Rbac::can($config, 'permohonan_bibit', 'delete');
+
+// "Tim Pemeliharaan" bibit = role Petugas Penanaman (role_id 6), pemegang
+// hak edit atas modul Permohonan Bibit — menerima notifikasi merah sejak
+// permohonan Disetujui sampai serah terima bibit benar-benar selesai.
+const ROLE_TIM_PEMELIHARAAN_BIBIT = 6;
+$notif = new NotificationModel($config);
+
+$currentUserId = $_SESSION['user_id'] ?? $_SESSION['admin_id'] ?? 0;
 
 $alertMsg  = '';
 $alertType = '';
@@ -29,12 +38,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     if ($id > 0 && in_array($status, $allowedStatus)) {
         try {
-            $stmt = $config->prepare("UPDATE permohonan_bibit SET status_permohonan = :status, keterangan = :keterangan WHERE id_bibit = :id");
+            if ($status === 'Disetujui') {
+                $stmt = $config->prepare(
+                    "UPDATE permohonan_bibit
+                     SET status_permohonan = :status, keterangan = :keterangan, tanggal_disetujui = CURDATE()
+                     WHERE id_bibit = :id"
+                );
+            } else {
+                $stmt = $config->prepare(
+                    "UPDATE permohonan_bibit SET status_permohonan = :status, keterangan = :keterangan WHERE id_bibit = :id"
+                );
+            }
             $stmt->execute([
                 ':status'     => $status,
                 ':keterangan' => $keterangan ?: null,
                 ':id'         => $id,
             ]);
+
+            // Permohonan Disetujui -> notifikasi (merah/belum dibaca) untuk
+            // Tim Pemeliharaan agar segera menyiapkan serah terima bibit.
+            if ($status === 'Disetujui') {
+                $rowStmt = $config->prepare("SELECT nama_pemohon FROM permohonan_bibit WHERE id_bibit = :id");
+                $rowStmt->execute([':id' => $id]);
+                $nama = $rowStmt->fetchColumn() ?: '-';
+                $notif->notifyRoleBibit(
+                    ROLE_TIM_PEMELIHARAAN_BIBIT,
+                    'Permohonan Bibit Disetujui',
+                    "Permohonan bibit dari \"{$nama}\" telah disetujui. Silakan proses serah terima bibit.",
+                    'permohonan_bibit.php',
+                    $id
+                );
+            }
+
             $alertMsg  = 'Status permohonan berhasil diperbarui.';
             $alertType = 'success';
         } catch (PDOException $e) {
@@ -45,6 +80,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $alertMsg  = 'Data tidak valid. Pastikan status yang dipilih benar.';
         $alertType = 'warning';
     }
+    }
+}
+
+// ===== PROSES SERAH TERIMA BIBIT (foto + tanggal) -> Selesai =====
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'serah_terima') {
+    if (!$canEditBibit) {
+        $alertMsg  = 'Peran Anda tidak memiliki izin memproses serah terima bibit.';
+        $alertType = 'warning';
+    } else {
+        $id = (int) ($_POST['id_bibit'] ?? 0);
+        $tanggalST = trim($_POST['tanggal_serah_terima'] ?? '') ?: date('Y-m-d');
+
+        $cekStmt = $config->prepare("SELECT status_permohonan FROM permohonan_bibit WHERE id_bibit = :id");
+        $cekStmt->execute([':id' => $id]);
+        $statusSaatIni = $cekStmt->fetchColumn();
+
+        if ($id <= 0 || $statusSaatIni !== 'Disetujui') {
+            $alertMsg  = 'Serah terima hanya bisa diproses untuk permohonan yang sudah Disetujui.';
+            $alertType = 'warning';
+        } elseif (empty($_FILES['foto_serah_terima']['name']) || $_FILES['foto_serah_terima']['error'] !== UPLOAD_ERR_OK) {
+            $alertMsg  = 'Foto serah terima wajib diunggah.';
+            $alertType = 'warning';
+        } else {
+            $folder  = __DIR__ . '/../images/';
+            $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+            if (!is_dir($folder)) {
+                mkdir($folder, 0755, true);
+            }
+            $ext = strtolower(pathinfo($_FILES['foto_serah_terima']['name'], PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowed)) {
+                $alertMsg  = 'Format foto tidak didukung. Gunakan JPG, PNG, atau GIF.';
+                $alertType = 'warning';
+            } else {
+                $namaFile = 'serahterima_' . $id . '_' . time() . '.' . $ext;
+                if (move_uploaded_file($_FILES['foto_serah_terima']['tmp_name'], $folder . $namaFile)) {
+                    try {
+                        $stmt = $config->prepare(
+                            "UPDATE permohonan_bibit
+                             SET status_permohonan = 'Selesai',
+                                 foto_serah_terima = :foto,
+                                 tanggal_serah_terima = :tanggal
+                             WHERE id_bibit = :id"
+                        );
+                        $stmt->execute([
+                            ':foto'    => $namaFile,
+                            ':tanggal' => $tanggalST,
+                            ':id'      => $id,
+                        ]);
+                        // Serah terima selesai -> notifikasi merah Tim Pemeliharaan hilang.
+                        $notif->markReadByBibit($id);
+                        $alertMsg  = 'Serah terima bibit berhasil dicatat, permohonan selesai.';
+                        $alertType = 'success';
+                    } catch (PDOException $e) {
+                        $alertMsg  = 'Gagal menyimpan serah terima: ' . $e->getMessage();
+                        $alertType = 'danger';
+                    }
+                } else {
+                    $alertMsg  = 'Gagal mengunggah foto serah terima.';
+                    $alertType = 'danger';
+                }
+            }
+        }
     }
 }
 
@@ -79,13 +176,40 @@ if (isset($_GET['deleted'])) {
     }
 }
 
-// ===== AMBIL SEMUA DATA =====
+// ===== FILTER: tanggal, status, jenis tanaman (dropdown dari entri yang ada) =====
+$filterTanggal = trim($_GET['tanggal'] ?? '');
+$filterStatus  = trim($_GET['status'] ?? '');
+$filterJenis   = trim($_GET['jenis'] ?? '');
+
+// ===== AMBIL SEMUA DATA (dengan filter opsional) =====
 try {
-    $stmt = $config->prepare("SELECT * FROM permohonan_bibit ORDER BY tanggal_permohonan DESC, id_bibit DESC");
-    $stmt->execute();
+    $sql    = "SELECT * FROM permohonan_bibit WHERE 1=1";
+    $params = [];
+    if ($filterTanggal !== '') {
+        $sql .= " AND tanggal_permohonan = :tanggal";
+        $params[':tanggal'] = $filterTanggal;
+    }
+    if ($filterStatus !== '') {
+        $sql .= " AND status_permohonan = :status";
+        $params[':status'] = $filterStatus;
+    }
+    if ($filterJenis !== '') {
+        $sql .= " AND jenis_tanaman = :jenis";
+        $params[':jenis'] = $filterJenis;
+    }
+    $sql .= " ORDER BY tanggal_permohonan DESC, id_bibit DESC";
+
+    $stmt = $config->prepare($sql);
+    $stmt->execute($params);
     $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Data untuk dropdown filter (mirip filter Excel: hanya nilai yang ada)
+    $daftarTanggal = $config->query("SELECT DISTINCT tanggal_permohonan FROM permohonan_bibit WHERE tanggal_permohonan IS NOT NULL ORDER BY tanggal_permohonan DESC")->fetchAll(PDO::FETCH_COLUMN);
+    $daftarJenis   = $config->query("SELECT DISTINCT jenis_tanaman FROM permohonan_bibit WHERE jenis_tanaman IS NOT NULL AND jenis_tanaman != '' ORDER BY jenis_tanaman ASC")->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
     $data = [];
+    $daftarTanggal = [];
+    $daftarJenis   = [];
     $alertMsg  = 'Gagal mengambil data: ' . $e->getMessage();
     $alertType = 'danger';
 }
@@ -126,6 +250,36 @@ require_once 'layouts/sidebar.php';
 
 
 
+<!-- ======= FILTER BAR (tanggal, status, jenis tanaman) ======= -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" class="d-flex gap-2 flex-wrap align-items-center">
+            <select name="tanggal" class="form-select form-select-sm" style="min-width:150px;">
+                <option value="">-- Semua Tanggal --</option>
+                <?php foreach ($daftarTanggal as $tgl): ?>
+                <option value="<?= htmlspecialchars($tgl) ?>" <?= $filterTanggal === $tgl ? 'selected' : '' ?>><?= htmlspecialchars($tgl) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <select name="status" class="form-select form-select-sm" style="min-width:140px;">
+                <option value="">-- Semua Status --</option>
+                <?php foreach (['Belum', 'Disetujui', 'Ditolak', 'Selesai'] as $st): ?>
+                <option value="<?= $st ?>" <?= $filterStatus === $st ? 'selected' : '' ?>><?= $st ?></option>
+                <?php endforeach; ?>
+            </select>
+            <select name="jenis" class="form-select form-select-sm" style="min-width:160px;">
+                <option value="">-- Semua Jenis Tanaman --</option>
+                <?php foreach ($daftarJenis as $jn): ?>
+                <option value="<?= htmlspecialchars($jn) ?>" <?= $filterJenis === $jn ? 'selected' : '' ?>><?= htmlspecialchars($jn) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-search"></i> Terapkan</button>
+            <?php if ($filterTanggal || $filterStatus || $filterJenis): ?>
+            <a href="permohonan_bibit.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x"></i> Reset</a>
+            <?php endif; ?>
+        </form>
+    </div>
+</div>
+
 <!-- ======= DATA TABLE ======= -->
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -147,6 +301,7 @@ require_once 'layouts/sidebar.php';
                         <th>Lokasi Tanam</th>
                         <th>Tgl Permohonan</th>
                         <th class="text-center">Status</th>
+                        <th>Serah Terima</th>
                         <th>Keterangan</th>
                         <th class="text-center pe-3">Aksi</th>
                     </tr>
@@ -179,10 +334,23 @@ require_once 'layouts/sidebar.php';
                                     $badgeClass = match ($status) {
                                         'Disetujui' => 'bg-success',
                                         'Ditolak'   => 'bg-danger',
+                                        'Selesai'   => 'bg-primary',
                                         default     => 'bg-warning text-dark',
                                     };
                                 ?>
                                 <span class="badge rounded-pill <?= $badgeClass ?>"><?= htmlspecialchars($status) ?></span>
+                            </td>
+                            <td style="font-size:0.78rem;">
+                                <?php if (!empty($row['foto_serah_terima'])): ?>
+                                    <a href="../images/<?= htmlspecialchars($row['foto_serah_terima']) ?>" target="_blank" class="text-decoration-none">
+                                        <i class="bi bi-image me-1 text-primary"></i>
+                                        <?= htmlspecialchars($row['tanggal_serah_terima'] ?? '-') ?>
+                                    </a>
+                                <?php elseif ($status === 'Disetujui'): ?>
+                                    <span class="text-muted"><i class="bi bi-hourglass-split me-1"></i>Menunggu serah terima</span>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span style="max-width:160px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.8rem;"
@@ -207,6 +375,18 @@ require_once 'layouts/sidebar.php';
                                         data-keterangan="<?= htmlspecialchars($row['keterangan'] ?? '') ?>">
                                     <i class="bi bi-chat-left-text"></i>
                                 </button>
+                                <?php if ($status === 'Disetujui'): ?>
+                                <!-- Tombol Serah Terima -->
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-success me-1"
+                                        title="Catat Serah Terima Bibit"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalSerahTerima"
+                                        data-id="<?= (int)$row['id_bibit'] ?>"
+                                        data-nama="<?= htmlspecialchars($row['nama_pemohon']) ?>">
+                                    <i class="bi bi-box-seam"></i>
+                                </button>
+                                <?php endif; ?>
                                 <?php endif; ?>
                                 <?php if ($canDeleteBibit): ?>
                                 <!-- Tombol Hapus -->
@@ -222,7 +402,7 @@ require_once 'layouts/sidebar.php';
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="10" class="text-center text-muted py-5">
+                            <td colspan="11" class="text-center text-muted py-5">
                                 <i class="bi bi-inbox fs-2 d-block mb-2"></i>
                                 Belum ada data permohonan bibit tanaman
                             </td>
@@ -306,6 +486,49 @@ require_once 'layouts/sidebar.php';
     </div>
 </div>
 
+<!-- ======= MODAL: SERAH TERIMA BIBIT ======= -->
+<div class="modal fade" id="modalSerahTerima" tabindex="-1" aria-labelledby="modalSerahTerimaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:var(--radius-lg); border:none; box-shadow:var(--shadow-lg);">
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="serah_terima">
+                <input type="hidden" name="id_bibit" id="st_id_bibit">
+
+                <div class="modal-header" style="border-bottom:1px solid var(--border-color);">
+                    <h5 class="modal-title fw-bold" id="modalSerahTerimaLabel">
+                        <i class="bi bi-box-seam me-2 text-success"></i>Serah Terima Bibit
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body py-3">
+                    <p class="text-muted" style="font-size:0.85rem;">
+                        Untuk: <strong id="st_nama">-</strong>. Notifikasi Tim Pemeliharaan akan hilang setelah data ini disimpan.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label" for="st_tanggal">Tanggal Serah Terima <span class="text-danger">*</span></label>
+                        <input type="date" name="tanggal_serah_terima" id="st_tanggal" class="form-control"
+                               value="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" for="st_foto">Foto Serah Terima <span class="text-danger">*</span></label>
+                        <input type="file" name="foto_serah_terima" id="st_foto" class="form-control"
+                               accept=".jpg,.jpeg,.png,.gif" required>
+                        <div class="form-text" style="font-size:0.75rem;">Format: JPG, PNG, GIF.</div>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="border-top:1px solid var(--border-color);">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i> Simpan Serah Terima
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Script: Populate modal data from button attributes -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -321,6 +544,15 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('modal_jumlah').textContent   = button.getAttribute('data-jumlah') + ' batang';
             document.getElementById('modal_status').value         = button.getAttribute('data-status');
             document.getElementById('modal_keterangan').value     = button.getAttribute('data-keterangan');
+        });
+    }
+
+    const modalSerahTerima = document.getElementById('modalSerahTerima');
+    if (modalSerahTerima) {
+        modalSerahTerima.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            document.getElementById('st_id_bibit').value = button.getAttribute('data-id');
+            document.getElementById('st_nama').textContent = button.getAttribute('data-nama');
         });
     }
 });

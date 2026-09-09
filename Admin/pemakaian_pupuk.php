@@ -23,17 +23,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add'])) {
     if (!$canCreate) {
         $alertMsg  = 'Peran Anda tidak memiliki izin menambah data pemakaian pupuk.';
         $alertType = 'warning';
+    } elseif (empty($_FILES['foto']['name'])) {
+        // Foto wajib ada
+        $alertMsg  = 'Foto wajib diunggah untuk mencatat pemakaian pupuk.';
+        $alertType = 'warning';
     } else {
-        $foto = null;
-        if (!empty($_FILES['foto']['name'])) {
-            $foto = 'pupuk_' . time() . '_' . basename($_FILES['foto']['name']);
-            move_uploaded_file($_FILES['foto']['tmp_name'], __DIR__ . '/../assets/foto/' . $foto);
-        }
+        $foto = 'pupuk_' . time() . '_' . basename($_FILES['foto']['name']);
+        move_uploaded_file($_FILES['foto']['tmp_name'], __DIR__ . '/../assets/foto/' . $foto);
         $ok = $model->create([
             'tanggal'     => $_POST['tanggal'] ?? date('Y-m-d'),
             'jenis_pupuk' => trim($_POST['jenis_pupuk'] ?? ''),
             'jumlah'      => (float) ($_POST['jumlah'] ?? 0),
-            'satuan'      => trim($_POST['satuan'] ?? 'kg'),
+            'satuan'      => trim($_POST['satuan'] ?? ''),
             'lokasi'      => trim($_POST['lokasi'] ?? ''),
             'keterangan'  => trim($_POST['keterangan'] ?? ''),
             'foto'        => $foto,
@@ -53,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit'])) {
             'tanggal'     => $_POST['tanggal'] ?? date('Y-m-d'),
             'jenis_pupuk' => trim($_POST['jenis_pupuk'] ?? ''),
             'jumlah'      => (float) ($_POST['jumlah'] ?? 0),
-            'satuan'      => trim($_POST['satuan'] ?? 'kg'),
+            'satuan'      => trim($_POST['satuan'] ?? ''),
             'lokasi'      => trim($_POST['lokasi'] ?? ''),
             'keterangan'  => trim($_POST['keterangan'] ?? ''),
         ]);
@@ -74,7 +75,9 @@ if (isset($_GET['deleted'])) {
     $alertType = $_GET['deleted'] === 'forbidden' ? 'warning' : 'success';
 }
 
-$data = $model->getAll();
+$fJenis = trim($_GET['jenis'] ?? '');
+$data = $model->getAll(['jenis' => $fJenis]);
+$availableJenisPupuk = $model->getAvailableJenis();
 $totalBulanIni = 0;
 foreach ($data as $row) {
     if (date('Y-m', strtotime($row['tanggal'])) === date('Y-m')) {
@@ -168,6 +171,23 @@ require_once 'layouts/sidebar.php';
             <div class="text-muted" style="font-size:0.75rem;">Total Bulan Ini</div>
             <div class="fs-4 fw-bold"><?= number_format($totalBulanIni, 1) ?> kg</div>
         </div></div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" class="d-flex gap-2 align-items-end flex-wrap">
+            <div>
+                <label class="form-label mb-1" style="font-size:0.72rem;">Filter Jenis Pupuk</label>
+                <select name="jenis" class="form-select form-select-sm" style="min-width:220px;">
+                    <option value="">Semua Jenis</option>
+                    <?php foreach ($availableJenisPupuk as $j): ?>
+                    <option value="<?= htmlspecialchars($j) ?>" <?= $fJenis === $j ? 'selected' : '' ?>><?= htmlspecialchars($j) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <button class="btn btn-sm btn-outline-success"><i class="bi bi-funnel"></i> Terapkan</button>
+        </form>
     </div>
 </div>
 
@@ -299,12 +319,8 @@ require_once 'layouts/sidebar.php';
                         <input type="number" step="0.01" class="form-control" name="jumlah" value="<?= htmlspecialchars($row['jumlah']) ?>" required>
                     </div>
                     <div class="col-5">
-                        <label class="form-label">Satuan</label>
-                        <select class="form-select" name="satuan">
-                            <?php foreach (['kg', 'liter', 'karung'] as $sat): ?>
-                            <option value="<?= $sat ?>" <?= $row['satuan'] === $sat ? 'selected' : '' ?>><?= $sat ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="form-label">Satuan <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="satuan" list="satuanList" value="<?= htmlspecialchars($row['satuan']) ?>" placeholder="kg / liter / karung / ..." required>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -352,12 +368,15 @@ require_once 'layouts/sidebar.php';
                         <input type="number" step="0.01" class="form-control" name="jumlah" required>
                     </div>
                     <div class="col-4">
-                        <label class="form-label">Satuan</label>
-                        <select class="form-select" name="satuan">
-                            <option value="kg">kg</option>
-                            <option value="liter">liter</option>
-                            <option value="karung">karung</option>
-                        </select>
+                        <label class="form-label">Satuan <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="satuan" list="satuanList" placeholder="kg / liter / karung / ..." required>
+                        <datalist id="satuanList">
+                            <option value="kg">
+                            <option value="liter">
+                            <option value="karung">
+                            <option value="sak">
+                            <option value="botol">
+                        </datalist>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -369,8 +388,9 @@ require_once 'layouts/sidebar.php';
                     <textarea class="form-control" name="keterangan" rows="2"></textarea>
                 </div>
                 <div class="mb-1">
-                    <label class="form-label">Foto (opsional)</label>
-                    <input type="file" class="form-control" name="foto" accept="image/*">
+                    <label class="form-label">Foto <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control" name="foto" accept="image/*" required>
+                    <div class="form-text">Foto wajib diunggah sebagai bukti pemakaian pupuk.</div>
                 </div>
             </div>
             <div class="modal-footer">

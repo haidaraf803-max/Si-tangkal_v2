@@ -7,9 +7,15 @@ require_once __DIR__ . '/../config.php';
 // ===== AUTH CHECK (login SELALU di /login.php, di luar folder) =====
 Auth::requireLogin('../login.php');
 require_once 'core/PengajuanModel.php';
+require_once 'core/Rbac.php';
 
 $model         = new PengajuanModel($config);
 $statusUpdate  = null;
+
+// Petugas Survey tidak berwenang menambah/mengubah foto apapun pada
+// pengajuan pemangkasan — menu upload foto disembunyikan untuk peran ini.
+$myRoleCode         = Rbac::currentRoleCode($config);
+$isPetugasSurveyOnly = ($myRoleCode === 'petugas_survey' && !Rbac::isSuperadmin($config));
 
 // ===== CEK ID =====
 if (!isset($_GET['id'])) {
@@ -32,7 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $namaFileBaruAfter = $data['DokumentasiAfter'] ?? '';
 
     // ===== HANDLE UPLOAD FILE SEBELUM =====
-    if (isset($_FILES['dokumentasi']) && $_FILES['dokumentasi']['error'] !== UPLOAD_ERR_NO_FILE) {
+    // Petugas Survey tidak boleh menambah foto apapun (server-side guard,
+    // selain menu upload yang juga disembunyikan di UI).
+    if (!$isPetugasSurveyOnly && isset($_FILES['dokumentasi']) && $_FILES['dokumentasi']['error'] !== UPLOAD_ERR_NO_FILE) {
         $folder   = __DIR__ . '/../images/';
         $allowed  = ['jpg', 'jpeg', 'png', 'gif'];
         $maxSize  = 5 * 1024 * 1024; // 5 MB
@@ -65,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // ===== HANDLE UPLOAD FILE SESUDAH =====
-    if ($statusUpdate === null && isset($_FILES['dokumentasiAfter']) && $_FILES['dokumentasiAfter']['error'] !== UPLOAD_ERR_NO_FILE) {
+    if (!$isPetugasSurveyOnly && $statusUpdate === null && isset($_FILES['dokumentasiAfter']) && $_FILES['dokumentasiAfter']['error'] !== UPLOAD_ERR_NO_FILE) {
         $folder   = __DIR__ . '/../images/';
         $allowed  = ['jpg', 'jpeg', 'png', 'gif'];
         $maxSize  = 5 * 1024 * 1024; // 5 MB
@@ -201,6 +209,7 @@ require_once 'layouts/sidebar.php';
                             </select>
                         </div>
 
+                        <?php if (!$isPetugasSurveyOnly): ?>
                         <div class="col-md-6">
                             <div class="p-3 rounded-2" style="background:#f8fafc; border:1px solid var(--border-color);">
                                 <label class="form-label" for="dokumentasi" style="font-weight:600;">Upload Foto (Sebelum Pemangkasan)</label>
@@ -236,6 +245,14 @@ require_once 'layouts/sidebar.php';
                                 <?php endif; ?>
                             </div>
                         </div>
+                        <?php else: ?>
+                        <div class="col-12">
+                            <div class="p-3 rounded-2 text-muted" style="background:#f8fafc; border:1px dashed var(--border-color); font-size:0.85rem;">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Peran Petugas Survey tidak berwenang menambah atau mengubah foto dokumentasi.
+                            </div>
+                        </div>
+                        <?php endif; ?>
 
                     </div><!-- /.row -->
 

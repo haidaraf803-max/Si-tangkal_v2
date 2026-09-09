@@ -28,6 +28,16 @@ $menuItems = array_map(function ($m) {
     ];
 }, Rbac::accessibleMenus($config));
 
+// ===== MENU YANG SEDANG DI-HOLD (disembunyikan sementara) =====
+// "Pergantian Pohon" (Menu Penebangan) di-hold sesuai skema terbaru
+// 20 Agustus 2026, poin 4. Cukup difilter dari sini (tidak menyentuh
+// tabel `menus`/`role_menu_access`) supaya gampang dimunculkan lagi
+// nanti — tinggal hapus/comment baris di bawah ini.
+$menuKeysOnHold = ['pergantian_pohon'];
+$menuItems = array_values(array_filter($menuItems, function ($m) use ($menuKeysOnHold) {
+    return !in_array($m['key'], $menuKeysOnHold, true);
+}));
+
 // ===== PENGELOMPOKAN SIDEBAR (tampilan saja, tidak mengubah RBAC) =====
 // Menu tetap sepenuhnya dikontrol oleh Rbac::accessibleMenus() di atas —
 // mapping di bawah ini HANYA menentukan sub-menu mana yang dikelompokkan
@@ -39,32 +49,45 @@ $menuGroupDefs = [
     'pemeliharaan' => [
         'label' => 'Pemeliharaan',
         'icon'  => 'bi-flower1',
-        'codes' => ['monitoring', 'laporan_penanaman', 'pemakaian_pupuk', 'pemakaian_bbm', 'permintaan_sarpras', 'pengajuan'],
+        'codes' => ['laporan_penanaman', 'pemakaian_pupuk', 'pemakaian_bbm', 'permintaan_sarpras', 'pengajuan'],
     ],
     'penebangan' => [
         'label' => 'Penebangan',
         'icon'  => 'bi-scissors',
         'codes' => ['pergantian_pohon'],
     ],
+    // "monitoring" (Monitoring Pohon, dulu "Pemeliharaan / Monitoring RTH")
+    // dipindahkan ke grup Inventarisasi Pohon sesuai skema terbaru
+    // 20 Agustus 2026, poin 5a. Label menu diubah lewat
+    // db/migration_rename_monitoring_menu.sql — pemindahan di sini hanya
+    // memengaruhi tampilan grup sidebar, tidak menyentuh RBAC.
     'inventarisasi' => [
         'label' => 'Inventarisasi Pohon',
         'icon'  => 'bi-tree',
-        'codes' => ['pohon', 'stok_bibit', 'permohonan_bibit'],
+        'codes' => ['pohon', 'monitoring', 'stok_bibit', 'permohonan_bibit'],
     ],
     'peta' => [
         'label' => 'Peta',
         'icon'  => 'bi-map',
         'codes' => ['map', 'peta_deliniasi'],
     ],
-    'akun' => [
-        'label' => 'Pengelolaan Akun',
-        'icon'  => 'bi-people',
-        'codes' => ['users', 'roles'],
-    ],
     'data' => [
         'label' => 'Penyajian Data',
         'icon'  => 'bi-bar-chart-line',
         'codes' => ['penyajian_data'],
+    ],
+    // Menu "Dokumen" (daftar dokumen + tombol unduh) sesuai skema
+    // terbaru 20 Agustus 2026, poin 6a. Lihat db/migration_dokumen.sql
+    // untuk pendaftaran menu & RBAC-nya.
+    'dokumen' => [
+        'label' => 'Dokumen',
+        'icon'  => 'bi-file-earmark-arrow-down',
+        'codes' => ['dokumen'],
+    ],
+    'akun' => [
+        'label' => 'Pengelolaan Akun',
+        'icon'  => 'bi-people',
+        'codes' => ['users', 'roles'],
     ],
 ];
 

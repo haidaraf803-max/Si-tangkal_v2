@@ -65,9 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// ===== SEARCH / GET ALL =====
-$keyword = trim($_GET['cari'] ?? '');
-$data    = $keyword ? $model->search($keyword) : $model->getAll();
+// ===== SEARCH / FILTER (tanggal & status) =====
+$keyword       = trim($_GET['cari'] ?? '');
+$filterTanggal = trim($_GET['tanggal'] ?? '');
+$filterStatus  = trim($_GET['status'] ?? '');
+$data          = $model->filter($keyword, $filterTanggal, $filterStatus);
+$daftarTanggal = $model->getDistinctTanggal();
 
 $pageTitle  = 'Data Pengajuan';
 $activePage = 'pengajuan';
@@ -111,12 +114,25 @@ require_once 'layouts/sidebar.php';
         <span><i class="bi bi-table me-2"></i>Daftar Pengajuan
             <span class="badge bg-secondary ms-1"><?= count($data) ?></span>
         </span>
-        <form method="GET" class="d-flex gap-2" style="min-width:240px;">
+        <form method="GET" class="d-flex gap-2 flex-wrap" style="min-width:240px;">
             <input type="text" name="cari" class="form-control form-control-sm"
-                   placeholder="Cari No Surat / Nama..."
+                   placeholder="Cari No Surat / Nama..." style="min-width:180px;"
                    value="<?= htmlspecialchars($keyword) ?>">
+            <select name="tanggal" class="form-select form-select-sm" style="min-width:150px;">
+                <option value="">-- Semua Tanggal --</option>
+                <?php foreach ($daftarTanggal as $tgl): ?>
+                <option value="<?= htmlspecialchars($tgl) ?>" <?= $filterTanggal === $tgl ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($tgl) ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
+            <select name="status" class="form-select form-select-sm" style="min-width:130px;">
+                <option value="">-- Semua Status --</option>
+                <option value="Belum" <?= $filterStatus === 'Belum' ? 'selected' : '' ?>>Belum</option>
+                <option value="Sudah" <?= $filterStatus === 'Sudah' ? 'selected' : '' ?>>Sudah</option>
+            </select>
             <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-search"></i></button>
-            <?php if ($keyword): ?>
+            <?php if ($keyword || $filterTanggal || $filterStatus): ?>
             <a href="pengajuan.php" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x"></i></a>
             <?php endif; ?>
         </form>

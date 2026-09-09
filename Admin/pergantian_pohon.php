@@ -5,6 +5,16 @@ require_once __DIR__ . '/../config.php';
 Auth::requireLogin('../login.php');
 require_once 'core/Rbac.php';
 Rbac::requireAccess($config, 'pergantian_pohon', 'view');
+
+// ===== FITUR DI-HOLD SEMENTARA =====
+// Sesuai skema terbaru 20 Agustus 2026 poin 4: "Menu Penebangan ->
+// Pergantian Pohon: hold". Menu sudah disembunyikan dari sidebar
+// (lihat Admin/layouts/sidebar.php); guard di bawah ini mencegah akses
+// langsung lewat URL selama fitur di-hold. Hapus blok ini (dan baris
+// terkait di sidebar.php) untuk mengaktifkan kembali menu ini.
+header('Location: index.php?hold=pergantian_pohon');
+exit;
+
 $canCreate = Rbac::can($config, 'pergantian_pohon', 'create');
 $canEdit   = Rbac::can($config, 'pergantian_pohon', 'edit'); // dipakai utk kelola tarif
 $canDelete = Rbac::can($config, 'pergantian_pohon', 'delete');

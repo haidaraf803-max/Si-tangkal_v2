@@ -23,19 +23,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_stok'])) {
     }
     $jenis_tanaman = trim($_POST['jenis_tanaman'] ?? '');
     $jumlah = (int)($_POST['jumlah_tersedia'] ?? 0);
-    $sumber_array = $_POST['sumber_bibit'] ?? [];
-    if (!is_array($sumber_array)) {
-        $sumber_array = [$sumber_array];
-    }
+    // Kategori pendanaan (sumber bibit) sekarang hanya bisa pilih SATU
+    // (radio button), bukan checkbox multi-pilih lagi.
+    $sumber = trim($_POST['sumber_bibit'] ?? '');
+    if ($sumber === 'Mandiri') $sumber = 'Pembibitan Mandiri';
 
-    if ($jenis_tanaman && $jumlah >= 0 && count($sumber_array) > 0) {
+    if ($jenis_tanaman && $jumlah >= 0 && $sumber !== '') {
         try {
-            $stmt = $config->prepare("INSERT INTO stok_bibit (jenis_tanaman, jumlah_tersedia, sumber_bibit) VALUES (:jenis, :jumlah, :sumber)");
-            foreach ($sumber_array as $sumber) {
-                if ($sumber === 'Mandiri') $sumber = 'Pembibitan Mandiri';
+            // ===== ANTI DUPLIKAT (jenis_tanaman + sumber_bibit = unique key, ignorecase) =====
+            // Kalau kombinasi jenis tanaman + sumber bibit yang sama sudah ada
+            // (tanpa memandang huruf besar/kecil), jangan buat baris baru —
+            // cukup tambahkan jumlahnya ke baris yang sudah ada dan perbarui
+            // tanggal_update-nya (sesuai catatan pada dokumen kebutuhan).
+            $stmtCek = $config->prepare(
+                "SELECT id_stok, jumlah_tersedia FROM stok_bibit
+                 WHERE LOWER(jenis_tanaman) = LOWER(:jenis) AND LOWER(sumber_bibit) = LOWER(:sumber)
+                 LIMIT 1"
+            );
+            $stmtCek->execute([':jenis' => $jenis_tanaman, ':sumber' => $sumber]);
+            $existing = $stmtCek->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing) {
+                $stmtUpd = $config->prepare(
+                    "UPDATE stok_bibit SET jumlah_tersedia = jumlah_tersedia + :jumlah, tanggal_update = CURRENT_TIMESTAMP WHERE id_stok = :id"
+                );
+                $stmtUpd->execute([':jumlah' => $jumlah, ':id' => $existing['id_stok']]);
+                $_SESSION['flash'] = ['type' => 'success', 'msg' => "Jenis tanaman & sumber bibit ini sudah ada, jumlah stok digabung ke data yang sudah ada (total sekarang " . ((int)$existing['jumlah_tersedia'] + $jumlah) . ")."];
+            } else {
+                $stmt = $config->prepare("INSERT INTO stok_bibit (jenis_tanaman, jumlah_tersedia, sumber_bibit) VALUES (:jenis, :jumlah, :sumber)");
                 $stmt->execute([':jenis' => $jenis_tanaman, ':jumlah' => $jumlah, ':sumber' => $sumber]);
+                $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Data stok berhasil ditambahkan!'];
             }
-            $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Data stok berhasil ditambahkan!'];
         } catch (PDOException $e) {
             $_SESSION['flash'] = ['type' => 'danger', 'msg' => 'Gagal menambah data: ' . $e->getMessage()];
         }
@@ -56,27 +74,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_stok'])) {
     $id_stok = (int)($_POST['id_stok'] ?? 0);
     $jenis_tanaman = trim($_POST['jenis_tanaman'] ?? '');
     $jumlah = (int)($_POST['jumlah_tersedia'] ?? 0);
-    $sumber_array = $_POST['sumber_bibit'] ?? [];
-    if (!is_array($sumber_array)) {
-        $sumber_array = [$sumber_array];
-    }
+    // Kategori pendanaan (sumber bibit) sekarang hanya bisa pilih SATU.
+    $sumber = trim($_POST['sumber_bibit'] ?? '');
+    if ($sumber === 'Mandiri') $sumber = 'Pembibitan Mandiri';
 
-    if ($id_stok > 0 && $jenis_tanaman && $jumlah >= 0 && count($sumber_array) > 0) {
+    if ($id_stok > 0 && $jenis_tanaman && $jumlah >= 0 && $sumber !== '') {
         try {
-            $first_sumber = array_shift($sumber_array);
-            if ($first_sumber === 'Mandiri') $first_sumber = 'Pembibitan Mandiri';
-            
-            $stmtUpdate = $config->prepare("UPDATE stok_bibit SET jenis_tanaman = :jenis, jumlah_tersedia = :jumlah, sumber_bibit = :sumber WHERE id_stok = :id");
-            $stmtUpdate->execute([':jenis' => $jenis_tanaman, ':jumlah' => $jumlah, ':sumber' => $first_sumber, ':id' => $id_stok]);
-            
-            if (count($sumber_array) > 0) {
-                $stmtInsert = $config->prepare("INSERT INTO stok_bibit (jenis_tanaman, jumlah_tersedia, sumber_bibit) VALUES (:jenis, :jumlah, :sumber)");
-                foreach ($sumber_array as $sumber) {
-                    if ($sumber === 'Mandiri') $sumber = 'Pembibitan Mandiri';
-                    $stmtInsert->execute([':jenis' => $jenis_tanaman, ':jumlah' => $jumlah, ':sumber' => $sumber]);
-                }
+            // ===== ANTI DUPLIKAT saat EDIT =====
+            // Kalau hasil edit ini "bentrok" dengan baris lain yang jenis
+            // tanaman + sumber bibitnya sama (ignorecase), gabungkan ke
+            // baris lain itu (jumlah dijumlahkan) dan hapus baris ini,
+            // supaya tetap tidak ada duplikasi.
+            $stmtCek = $config->prepare(
+                "SELECT id_stok, jumlah_tersedia FROM stok_bibit
+                 WHERE LOWER(jenis_tanaman) = LOWER(:jenis) AND LOWER(sumber_bibit) = LOWER(:sumber) AND id_stok <> :id
+                 LIMIT 1"
+            );
+            $stmtCek->execute([':jenis' => $jenis_tanaman, ':sumber' => $sumber, ':id' => $id_stok]);
+            $existing = $stmtCek->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing) {
+                $stmtUpd = $config->prepare(
+                    "UPDATE stok_bibit SET jumlah_tersedia = jumlah_tersedia + :jumlah, tanggal_update = CURRENT_TIMESTAMP WHERE id_stok = :id"
+                );
+                $stmtUpd->execute([':jumlah' => $jumlah, ':id' => $existing['id_stok']]);
+
+                $stmtDel = $config->prepare("DELETE FROM stok_bibit WHERE id_stok = :id");
+                $stmtDel->execute([':id' => $id_stok]);
+
+                $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Jenis tanaman & sumber bibit ini sudah ada di baris lain, data digabung otomatis.'];
+            } else {
+                $stmtUpdate = $config->prepare("UPDATE stok_bibit SET jenis_tanaman = :jenis, jumlah_tersedia = :jumlah, sumber_bibit = :sumber WHERE id_stok = :id");
+                $stmtUpdate->execute([':jenis' => $jenis_tanaman, ':jumlah' => $jumlah, ':sumber' => $sumber, ':id' => $id_stok]);
+                $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Data stok berhasil diperbarui!'];
             }
-            $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Data stok berhasil diperbarui!'];
         } catch (PDOException $e) {
             $_SESSION['flash'] = ['type' => 'danger', 'msg' => 'Gagal memperbarui data: ' . $e->getMessage()];
         }
@@ -110,19 +141,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_stok'])) {
 
 // ===== AMBIL DATA =====
 $filter_sumber = $_GET['filter_sumber'] ?? '';
+$filter_jenis  = trim($_GET['filter_jenis'] ?? '');
 
 try {
-    $query = "SELECT * FROM stok_bibit";
+    $query  = "SELECT * FROM stok_bibit";
+    $where  = [];
     $params = [];
     if (!empty($filter_sumber) && $filter_sumber !== 'Semua Kategori') {
-        $query .= " WHERE sumber_bibit = :sumber";
+        $where[] = "sumber_bibit = :sumber";
         $params[':sumber'] = $filter_sumber;
+    }
+    if ($filter_jenis !== '') {
+        $where[] = "jenis_tanaman = :jenis";
+        $params[':jenis'] = $filter_jenis;
+    }
+    if ($where) {
+        $query .= " WHERE " . implode(" AND ", $where);
     }
     $query .= " ORDER BY sumber_bibit ASC, jenis_tanaman ASC";
     
     $stmt = $config->prepare($query);
     $stmt->execute($params);
     $stokData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Opsi dropdown filter jenis tanaman, dari data yang benar-benar ada.
+    $opsiJenisTanaman = $config->query(
+        "SELECT DISTINCT jenis_tanaman FROM stok_bibit ORDER BY jenis_tanaman ASC"
+    )->fetchAll(PDO::FETCH_COLUMN);
 } catch (PDOException $e) {
     die("Gagal mengambil data: " . $e->getMessage());
 }
@@ -167,7 +212,7 @@ require_once 'layouts/sidebar.php';
 <div class="card border-0 shadow-sm mb-4" style="border-radius: var(--radius-md);">
     <div class="card-body">
         <form method="GET" class="row g-3 align-items-end">
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label text-muted small fw-bold">Filter Kategori Pendanaan</label>
                 <select name="filter_sumber" class="form-select">
                     <option value="Semua Kategori" <?= ($filter_sumber === 'Semua Kategori' || $filter_sumber === '') ? 'selected' : '' ?>>Semua Kategori</option>
@@ -177,8 +222,17 @@ require_once 'layouts/sidebar.php';
                 </select>
             </div>
             <div class="col-md-4">
+                <label class="form-label text-muted small fw-bold">Filter Jenis Tanaman</label>
+                <select name="filter_jenis" class="form-select">
+                    <option value="">-- Semua Jenis --</option>
+                    <?php foreach ($opsiJenisTanaman as $jt): ?>
+                    <option value="<?= htmlspecialchars($jt) ?>" <?= ($filter_jenis === $jt) ? 'selected' : '' ?>><?= htmlspecialchars($jt) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-4">
                 <button type="submit" class="btn btn-success me-2"><i class="bi bi-funnel me-1"></i> Filter</button>
-                <?php if(!empty($filter_sumber) && $filter_sumber !== 'Semua Kategori'): ?>
+                <?php if((!empty($filter_sumber) && $filter_sumber !== 'Semua Kategori') || $filter_jenis !== ''): ?>
                     <a href="stok_bibit.php" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Reset</a>
                 <?php endif; ?>
             </div>
@@ -260,18 +314,18 @@ require_once 'layouts/sidebar.php';
                                                 </div>
 
                                                 <div class="mb-3">
-                                                    <label class="form-label text-muted small fw-bold">Sumber Bibit</label>
+                                                    <label class="form-label text-muted small fw-bold">Sumber Bibit (pilih satu)</label>
                                                     <div class="d-flex flex-column gap-2">
                                                         <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" name="sumber_bibit[]" id="edit_kat_apbd<?= $row['id_stok'] ?>" value="APBD" <?= ($sumber === 'APBD') ? 'checked' : '' ?>>
+                                                            <input class="form-check-input" type="radio" name="sumber_bibit" id="edit_kat_apbd<?= $row['id_stok'] ?>" value="APBD" <?= ($sumber === 'APBD') ? 'checked' : '' ?> required>
                                                             <label class="form-check-label" for="edit_kat_apbd<?= $row['id_stok'] ?>">APBD</label>
                                                         </div>
                                                         <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" name="sumber_bibit[]" id="edit_kat_mandiri<?= $row['id_stok'] ?>" value="Pembibitan Mandiri" <?= ($sumber === 'Mandiri' || $sumber === 'Pembibitan Mandiri') ? 'checked' : '' ?>>
+                                                            <input class="form-check-input" type="radio" name="sumber_bibit" id="edit_kat_mandiri<?= $row['id_stok'] ?>" value="Pembibitan Mandiri" <?= ($sumber === 'Mandiri' || $sumber === 'Pembibitan Mandiri') ? 'checked' : '' ?>>
                                                             <label class="form-check-label" for="edit_kat_mandiri<?= $row['id_stok'] ?>">Mandiri</label>
                                                         </div>
                                                         <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" name="sumber_bibit[]" id="edit_kat_hibah<?= $row['id_stok'] ?>" value="Hibah" <?= ($sumber === 'Hibah') ? 'checked' : '' ?>>
+                                                            <input class="form-check-input" type="radio" name="sumber_bibit" id="edit_kat_hibah<?= $row['id_stok'] ?>" value="Hibah" <?= ($sumber === 'Hibah') ? 'checked' : '' ?>>
                                                             <label class="form-check-label" for="edit_kat_hibah<?= $row['id_stok'] ?>">Hibah</label>
                                                         </div>
                                                     </div>
@@ -320,18 +374,18 @@ require_once 'layouts/sidebar.php';
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label text-dark fw-bold">Kategori Pendanaan (Sumber Bibit)</label>
+                    <label class="form-label text-dark fw-bold">Kategori Pendanaan (Sumber Bibit) — pilih satu</label>
                     <div class="d-flex flex-column gap-2">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="sumber_bibit[]" id="stok_kat_apbd" value="APBD" checked>
+                            <input class="form-check-input" type="radio" name="sumber_bibit" id="stok_kat_apbd" value="APBD" checked required>
                             <label class="form-check-label" for="stok_kat_apbd">APBD</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="sumber_bibit[]" id="stok_kat_mandiri" value="Pembibitan Mandiri">
+                            <input class="form-check-input" type="radio" name="sumber_bibit" id="stok_kat_mandiri" value="Pembibitan Mandiri">
                             <label class="form-check-label" for="stok_kat_mandiri">Mandiri</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="sumber_bibit[]" id="stok_kat_hibah" value="Hibah">
+                            <input class="form-check-input" type="radio" name="sumber_bibit" id="stok_kat_hibah" value="Hibah">
                             <label class="form-check-label" for="stok_kat_hibah">Hibah</label>
                         </div>
                     </div>

@@ -39,6 +39,16 @@ try {
     $stmtHibah = $config->query("SELECT jenis_tanaman, jumlah_tersedia FROM stok_bibit WHERE sumber_bibit = 'Hibah' ORDER BY jumlah_tersedia DESC");
     $stokHibah = $stmtHibah->fetchAll(PDO::FETCH_ASSOC);
 
+    // ===== NILAI IKTL & RTH TERBARU (untuk kartu paling atas dashboard) =====
+    // Sumber data sama dengan menu "Penyajian Data" (tabel penyajian_data,
+    // input manual per tahun) — kartu ini menampilkan nilai tahun terbaru.
+    require_once 'core/PenyajianDataModel.php';
+    $penyajianModel = new PenyajianDataModel($config);
+    $iktlRows = $penyajianModel->getByJenis('iktl');
+    $rthRows  = $penyajianModel->getByJenis('rth_persen');
+    $iktlLatest = end($iktlRows) ?: null; // getByJenis sudah ORDER BY tahun ASC
+    $rthLatest  = end($rthRows) ?: null;
+
 } catch (PDOException $e) {
     die("Gagal mengambil data: " . $e->getMessage());
 }
@@ -51,6 +61,14 @@ require_once 'layouts/sidebar.php';
 
 <!-- ======= DASHBOARD CONTENT ======= -->
 
+<?php if (($_GET['hold'] ?? '') === 'pergantian_pohon'): ?>
+<div class="alert alert-warning alert-dismissible fade show" role="alert" style="border-radius:var(--radius-md); border:none;">
+    <i class="bi bi-pause-circle me-2"></i>
+    Menu <strong>Pergantian Pohon</strong> sedang di-hold sementara dan belum tersedia.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
+
 <!-- Page Heading -->
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
@@ -62,7 +80,52 @@ require_once 'layouts/sidebar.php';
     </span>
 </div>
 
-<!-- ===== 4 STAT CARDS ===== -->
+<!-- ===== KARTU NILAI IKTL & RTH (paling atas, sesuai skema 20 Agustus 2026 poin 1) ===== -->
+<div class="row g-3 mb-4">
+    <!-- IKTL -->
+    <div class="col-12 col-md-6">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:rgba(111,66,193,0.1); color:#6f42c1;">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="stat-number" style="color:#6f42c1;">
+                        <?= $iktlLatest ? number_format((float) $iktlLatest['nilai'], 2, ',', '.') : '-' ?>
+                    </div>
+                    <div class="stat-label text-muted fw-bold">
+                        NILAI IKTL <?= $iktlLatest ? '(' . (int) $iktlLatest['tahun'] . ')' : '' ?>
+                    </div>
+                </div>
+                <a href="penyajian_data.php" class="btn btn-sm btn-outline-secondary">Kelola</a>
+            </div>
+            <div style="height:3px; background:linear-gradient(90deg,#6f42c1,#b39ddb); border-radius:0 0 var(--radius-md) var(--radius-md);"></div>
+        </div>
+    </div>
+
+    <!-- RTH -->
+    <div class="col-12 col-md-6">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon" style="background:rgba(25,135,84,0.1); color:#198754;">
+                    <i class="bi bi-tree"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="stat-number text-success">
+                        <?= $rthLatest ? number_format((float) $rthLatest['nilai'], 2, ',', '.') . '%' : '-' ?>
+                    </div>
+                    <div class="stat-label text-muted fw-bold">
+                        PERSENTASE RTH <?= $rthLatest ? '(' . (int) $rthLatest['tahun'] . ')' : '' ?>
+                    </div>
+                </div>
+                <a href="penyajian_data.php" class="btn btn-sm btn-outline-secondary">Kelola</a>
+            </div>
+            <div style="height:3px; background:linear-gradient(90deg,#198754,#75c997); border-radius:0 0 var(--radius-md) var(--radius-md);"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== 4 STAT CARDS (Pengajuan & Pohon, di bawah kartu IKTL/RTH) ===== -->
 <div class="row g-3 mb-4">
 
     <!-- Total Pengajuan -->

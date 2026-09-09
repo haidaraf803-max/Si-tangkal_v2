@@ -128,6 +128,17 @@
 .legend-swatch.kurang-sehat { background: var(--color-kurang-sehat); }
 .legend-swatch.green { background: var(--color-green-space); }
 
+/* Update Legenda (skema terbaru 20 Agustus 2026, poin Peta #2):
+   simbol pohon yang sedang dipilih (lihat selectTreeMarker di map.js),
+   serta layer citra WMS yang sebelumnya tidak punya keterangan legenda. */
+.legend-swatch.selected {
+    background: transparent;
+    border: 3px solid #facc15;
+}
+.legend-swatch.pucuk { background: #2f9e44; opacity: .55; }
+.legend-swatch.tutupan-lahan { background: #d97706; opacity: .55; }
+.legend-swatch.lahan-kritis { background: #dc2626; opacity: .55; }
+
 /* ---------- Right stack: layer control ---------- */
 .layer-panel {
     position: fixed;

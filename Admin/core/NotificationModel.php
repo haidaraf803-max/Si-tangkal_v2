@@ -70,4 +70,30 @@ class NotificationModel
         );
         return $stmt->execute([$userId, $roleId]);
     }
+
+    /**
+     * Notifikasi khusus alur Permohonan Bibit (dilacak lewat bibit_id,
+     * terpisah dari pengajuan_id yang dipakai alur pemangkasan).
+     * Dipakai saat status berubah menjadi "Disetujui" — notifikasi tetap
+     * merah/belum dibaca untuk "tim pemeliharaan" (Petugas Penanaman)
+     * sampai serah terima bibit benar-benar selesai.
+     */
+    public function notifyRoleBibit(int $roleId, string $title, string $message, ?string $link, int $bibitId): void
+    {
+        $stmt = $this->conn->prepare(
+            "INSERT INTO notifications (role_id, bibit_id, title, message, link) VALUES (?, ?, ?, ?, ?)"
+        );
+        $stmt->execute([$roleId, $bibitId, $title, $message, $link]);
+    }
+
+    /**
+     * Tandai semua notifikasi terkait 1 permohonan bibit sebagai sudah
+     * dibaca — dipanggil setelah foto & tanggal serah terima disimpan,
+     * sehingga notifikasi merah di "tim pemeliharaan" hilang.
+     */
+    public function markReadByBibit(int $bibitId): bool
+    {
+        $stmt = $this->conn->prepare("UPDATE notifications SET is_read = 1 WHERE bibit_id = ?");
+        return $stmt->execute([$bibitId]);
+    }
 }
