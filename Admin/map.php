@@ -1,5 +1,5 @@
 <?php
-$pageTitle  = 'Peta Sebaran Pohon';
+$pageTitle  = 'Peta Sebaran Pohon.';
 $activePage = 'map';
 require_once __DIR__ . '/../config.php';
 
